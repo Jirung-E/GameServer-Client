@@ -99,9 +99,6 @@ private:
 
     POINT old_cursor_pos { };
 
-    HeightMap* terrain_height_map = nullptr;
-    CGameObject* terrain = nullptr;
-
 public:
 	GameScene();
 	virtual ~GameScene();
@@ -131,7 +128,5 @@ protected:
     void movePlayer(float fTimeElapsed);
 
     void updateCamera();
-
-    void buildTerrain(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList);
 };
 

@@ -542,32 +542,10 @@ LRESULT CGameFramework::OnProcessingWindowMessage(HWND hWnd, UINT nMessageID, WP
             break;
         }
 
-        //case QUIT_GAME_SCENE: {
-        //    m_pScene->ReleaseObjects();
-        //    delete m_pScene;
-        //    m_pScene = new LobyScene { };
-        //    adaptSceneSize();
-        //    BuildObjects();
-        //    break;
-        //}
-
-        //case QUIT_LOBY_SCENE: {
-        //    ::PostQuitMessage(0);
-        //    break;
-        //}
         case QUIT_GAME_SCENE: {
             ::PostQuitMessage(0);
             break;
         }
-
-        //case START_GAME_SCENE: {
-        //    m_pScene->ReleaseObjects();
-        //    delete m_pScene;
-        //    m_pScene = new GameScene { };
-        //    adaptSceneSize();
-        //    BuildObjects();
-        //    break;
-        //}
 
         case WM_DESTROY:
             PostQuitMessage(0);

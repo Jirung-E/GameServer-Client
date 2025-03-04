@@ -2,8 +2,6 @@
 
 #include "Shader.h"
 
-//#include "stb_image.h"
-
 
 Scene::Scene():
     scene_width { FRAME_BUFFER_WIDTH }, 
@@ -313,7 +311,6 @@ void GameScene::BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList
 
     CMaterial::PrepareShaders(pd3dDevice, pd3dCommandList, m_pd3dGraphicsRootSignature);
 
-    buildTerrain(pd3dDevice, pd3dCommandList);
     BuildDefaultLightsAndMaterials();
 
     {
@@ -384,10 +381,6 @@ void GameScene::AnimateObjects(float fTimeElapsed) {
     movePlayer(fTimeElapsed);
 
     {
-        auto position = m_pPlayer->GetPosition();
-        float terrain_height = terrain_height_map->getHeight(position.x, position.z) + terrain->GetPosition().y;
-        m_pPlayer->SetPosition({ position.x, terrain_height, position.z });
-
         // 플레이어를 지형에 맞게 회전하지 않으므로, 포탑 회전은 더 쉽다.
         auto cannon_direction = m_pPlayer->getCannonLook();
         auto look_direction = m_pPlayer->getLookDirection();
@@ -503,10 +496,6 @@ bool GameScene::OnProcessingKeyboardMessage(HWND hWnd, UINT nMessageID, WPARAM w
 
 void GameScene::Render(ID3D12GraphicsCommandList* pd3dCommandList) {
     Scene::Render(pd3dCommandList);
-
-    if(terrain) {
-        terrain->Render(pd3dCommandList, camera);
-    }
 }
 
 
@@ -570,21 +559,5 @@ void GameScene::updateCamera() {
     look_at = Vector3::Add(look_at, Vector3::ScalarProduct(up, offset.y, false));
     look_at = Vector3::Add(look_at, Vector3::ScalarProduct(right, offset.x, false));
 
-    auto height_map = terrain_height_map->getHeight(position.x, position.z);
-    if(position.y < height_map + 1.0f) {
-        look_at.y += height_map + 1.0f - position.y;
-        position.y = height_map + 1.0f;
-    }
-
     camera->GenerateViewMatrix(position, look_at, up);
-}
-
-
-void GameScene::buildTerrain(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList) {
-    terrain_height_map = new HeightMap { "Terrain/map2.png", 200.0f, 10.0f, 200.0f };
-    CubeObject* t = new CubeObject { };
-    //t->SetPosition({ 0.0f, -50.0f, 0.0f });
-    t->SetMesh(terrain_height_map->createMesh(pd3dDevice, pd3dCommandList));
-    t->SetRotationSpeed(0.0f);
-    terrain = t;
 }
