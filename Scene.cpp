@@ -259,10 +259,7 @@ void GameScene::CreateShaderVariables(ID3D12Device* pd3dDevice, ID3D12GraphicsCo
 
 
 void GameScene::BuildDefaultLightsAndMaterials() {
-    const int enemy_light_count = 10;
-    enemy_lights.reserve(enemy_light_count);
-
-    m_nLights = 1 + 1 + enemy_light_count;        // 플레이어, 태양, 적기 
+    m_nLights = 1 + 1;        // 플레이어, 태양
     m_pLights = new LIGHT[m_nLights];
     ::ZeroMemory(m_pLights, sizeof(LIGHT) * m_nLights);
 
@@ -287,23 +284,6 @@ void GameScene::BuildDefaultLightsAndMaterials() {
     m_pLights[1].m_fTheta = (float)cos(XMConvertToRadians(10.0f));
 
     player_searchlight = &m_pLights[1];
-
-    for(int i=2; i<m_nLights; ++i) {
-        m_pLights[i].m_bEnable = true;
-        m_pLights[i].m_nType = SPOT_LIGHT;
-        m_pLights[i].m_fRange = 500.0f;
-        m_pLights[i].m_xmf4Ambient = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f);
-        m_pLights[i].m_xmf4Diffuse = XMFLOAT4(0.3f, 0.0f, 0.0f, 1.0f);
-        m_pLights[i].m_xmf4Specular = XMFLOAT4(0.2f, 0.2f, 0.2f, 0.0f);
-        m_pLights[i].m_xmf3Position = XMFLOAT3(0.0f, 0.0f, 0.0f);
-        m_pLights[i].m_xmf3Direction = XMFLOAT3(0.0f, 0.0f, 0.0f);
-        m_pLights[i].m_xmf3Attenuation = XMFLOAT3(1.0f, 0.001f, 0.0001f);
-        m_pLights[i].m_fFalloff = 8.0f;
-        m_pLights[i].m_fPhi = (float)cos(XMConvertToRadians(16.0f));
-        m_pLights[i].m_fTheta = (float)cos(XMConvertToRadians(8.0f));
-        
-        enemy_lights.push_back(&m_pLights[i]);
-    }
 }
 
 void GameScene::BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList) {
@@ -334,40 +314,6 @@ void GameScene::BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList
         m_pObjects.push_back(m_pPlayer);
     }
 
-    {
-        CGameObject* helli_model = CGameObject::LoadGeometryFromFile(
-            pd3dDevice, pd3dCommandList,
-            m_pd3dGraphicsRootSignature,
-            "Model/SuperCobra.bin", 0.5f
-        );
-
-        for(int i=0; i<enemy_count; ++i) {
-            XMFLOAT3 position { Random::RandF(-50.0f, 50.0f), Random::RandF(20.0f, 30.0f), Random::RandF(-50.0f, 50.0f) };
-            float rotation_speed = Random::RandF(30.0f, 60.0f);
-
-            FlyingObject* enemy = nullptr;
-
-            enemy = new HellicopterObject { };
-            enemy->SetChild(helli_model, true);
-            enemy->OnInitialize();
-            enemy->setBulletMesh(bullet_mesh);
-
-            enemy->SetPosition(position);
-            enemy->rotate_local = true;
-            enemy->Rotate(0.0f, Random::RandF(0.0f, 360.0f), 0.0f);
-            enemy->SetRotationSpeed(rotation_speed / 2.0f);
-            enemy->setMovingSpeed(rotation_speed / 6.0f);
-
-            auto oobb = enemy->getBoundingBox();
-            oobb.Center.y += 0.5f;
-            oobb.Extents.z *= 2.0f;
-            enemy->setBoundingBox(oobb.Center, oobb.Extents);
-
-            m_pObjects.push_back(enemy);
-            enemies.push_back(enemy);
-        }
-    }
-
     CMeshLoadInfo cube_info = CMeshLoadInfo::CubeInfo(0.2f, 0.2f, 0.2f);
     CMesh* cube_mesh = new CMeshIlluminatedFromFile { pd3dDevice, pd3dCommandList, &cube_info };
 
@@ -381,7 +327,6 @@ void GameScene::AnimateObjects(float fTimeElapsed) {
     movePlayer(fTimeElapsed);
 
     {
-        // 플레이어를 지형에 맞게 회전하지 않으므로, 포탑 회전은 더 쉽다.
         auto cannon_direction = m_pPlayer->getCannonLook();
         auto look_direction = m_pPlayer->getLookDirection();
 
@@ -418,23 +363,6 @@ void GameScene::AnimateObjects(float fTimeElapsed) {
         player_searchlight->m_xmf3Position = m_pPlayer->getCannonPosition();
         player_searchlight->m_xmf3Direction = m_pPlayer->getCannonLook();
     }
-
-    for(int i=0; i<enemy_lights.size(); ++i) {
-        XMFLOAT3 to_player = Vector3::Subtract(m_pPlayer->GetPosition(), enemies[i]->GetPosition());
-        XMFLOAT3 to_player_horizontal = to_player;
-        to_player_horizontal.y = 0.0f;
-        float horizontal_distance = Vector3::Length(to_player_horizontal);
-        if(horizontal_distance < 50.0f) {
-            enemy_lights[i]->m_xmf3Position = enemies[i]->GetPosition();
-            enemy_lights[i]->m_xmf3Direction = Vector3::Normalize(to_player);
-        }
-        else {
-            enemy_lights[i]->m_xmf3Position = enemies[i]->GetPosition();
-            enemy_lights[i]->m_xmf3Direction = XMFLOAT3 { 0.0f, -1.0f, 0.0f };
-        }
-    }
-
-    checkEnemyByBulletCollisions();
 
     updateCamera();
 }
@@ -499,17 +427,6 @@ void GameScene::Render(ID3D12GraphicsCommandList* pd3dCommandList) {
 }
 
 
-void GameScene::checkEnemyByBulletCollisions() {
-    for(auto& enemy : enemies) {
-        if(enemy->is_active) {
-            if(m_pPlayer->checkBulletCollision(enemy)) {
-                //enemy->is_active = false;
-            }
-        }
-    }
-}
-
-
 void GameScene::movePlayer(float fTimeElapsed) {
     if(m_pPlayer->m_bBlowingUp) return;
 
@@ -525,17 +442,6 @@ void GameScene::movePlayer(float fTimeElapsed) {
         if(pKeyBuffer['D'] & 0xF0) m_pPlayer->rotateY(player_rotation_speed * fTimeElapsed);
 
         if(pKeyBuffer[VK_SPACE] & 0xF0) m_pPlayer->fire();
-
-        //// 언덕이면 속도가 줄어들도록
-        //// 이동방향과, 지형의 노멀벡터를 구해서
-        //// 45도 이상이면 못올라가도록(오히려 흘러내려오도록)
-        //XMFLOAT3 position = m_pPlayer->GetPosition();
-        //XMFLOAT3 v = m_pPlayer->GetVelocity();  // 플레이어는 어차피 y방향 속도를 갖지 않도록 할 예정
-        //float length = Vector3::Length(v);
-        //
-        //// 지형의 노멀의 y는 필요 없다.
-        //XMFLOAT3 terrain_normal = terrain_height_map->getNormal(m_pPlayer->GetPosition().x, m_pPlayer->GetPosition().z);
-        //terrain_normal.y = 0.0f;
 
         m_pPlayer->Move(xmf3Shift, true);
     }

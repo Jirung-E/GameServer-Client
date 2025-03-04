@@ -87,13 +87,9 @@ class GameScene : public Scene {
 private:
     CPlayer* m_pPlayer = nullptr;
 
-    std::vector<FlyingObject*> enemies;
-    int enemy_count = 10;
-
     float player_speed = 100.0f;
     float player_rotation_speed = 45.0f;
     LIGHT* player_searchlight = nullptr;
-    vector<LIGHT*> enemy_lights;
 
     bool mouse_pressed = false;
 
@@ -123,8 +119,6 @@ public:
     virtual void Render(ID3D12GraphicsCommandList* pd3dCommandList);
 
 protected:
-    void checkEnemyByBulletCollisions();
-
     void movePlayer(float fTimeElapsed);
 
     void updateCamera();
