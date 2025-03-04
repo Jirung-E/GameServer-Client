@@ -32,9 +32,7 @@ protected:
 
     float horizontal_max_angle = 89.0f;
     float horizontal_min_angle = -89.0f;
-
-    XMFLOAT3 offset { };
-
+    
 public:
     enum Mode {
         FirstPerson,
@@ -86,30 +84,4 @@ public:
 
     void setHorizontalMaxAngle(float angle);
     void setHorizontalMinAngle(float angle);
-    
-    virtual void switchMode();
-    virtual void switchTo(Mode mode);
-    Mode getMode() const {
-        return mode; 
-    }
-
-    XMFLOAT3 getOffset() const {
-        return offset;
-    }
-};
-
-
-
-
-
-
-
-
-
-class TankCamera : public CCamera {
-public:
-    TankCamera();
-
-public:
-    virtual void switchMode() override;
 };

@@ -26,15 +26,19 @@ CMeshLoadInfo CMeshLoadInfo::CubeInfo(float fWidth, float fHeight, float fDepth)
 	pMeshInfo.m_nType |= VERTEXT_POSITION;
 	pMeshInfo.m_nType |= VERTEXT_NORMAL;
 
+    float wx = fWidth / 2.0f;
+    float wy = fHeight / 2.0f;
+    float wz = fDepth / 2.0f;
+
 	vector<XMFLOAT3> vertices {
-		XMFLOAT3 { -fWidth, -fHeight, -fDepth },
-        XMFLOAT3 { fWidth, -fHeight, -fDepth },
-        XMFLOAT3 { fWidth, fHeight, -fDepth },
-        XMFLOAT3 { -fWidth, fHeight, -fDepth },
-        XMFLOAT3 { -fWidth, -fHeight, fDepth },
-        XMFLOAT3 { fWidth, -fHeight, fDepth },
-        XMFLOAT3 { fWidth, fHeight, fDepth },
-        XMFLOAT3 { -fWidth, fHeight, fDepth },
+		XMFLOAT3 { -wx, -wy, -wz },
+        XMFLOAT3 { wx, -wy, -wz },
+        XMFLOAT3 { wx, wy, -wz },
+        XMFLOAT3 { -wx, wy, -wz },
+        XMFLOAT3 { -wx, -wy, wz },
+        XMFLOAT3 { wx, -wy, wz },
+        XMFLOAT3 { wx, wy, wz },
+        XMFLOAT3 { -wx, wy, wz },
 	};
 	vector<UINT> indices {
 		0, 1, 2, 0, 2, 3,

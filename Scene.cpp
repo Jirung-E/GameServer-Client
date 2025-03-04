@@ -259,7 +259,7 @@ void GameScene::CreateShaderVariables(ID3D12Device* pd3dDevice, ID3D12GraphicsCo
 
 
 void GameScene::BuildDefaultLightsAndMaterials() {
-    m_nLights = 1 + 1;        // 플레이어, 태양
+    m_nLights = 1;        // 플레이어, 태양
     m_pLights = new LIGHT[m_nLights];
     ::ZeroMemory(m_pLights, sizeof(LIGHT) * m_nLights);
 
@@ -267,23 +267,10 @@ void GameScene::BuildDefaultLightsAndMaterials() {
 
     m_pLights[0].m_bEnable = true;
     m_pLights[0].m_nType = DIRECTIONAL_LIGHT;
-    m_pLights[0].m_xmf4Ambient = XMFLOAT4(0.5f, 0.5f, 0.6f, 1.0f);
-    m_pLights[0].m_xmf4Diffuse = XMFLOAT4(0.5f, 0.5f, 0.5f, 1.0f);
-    m_pLights[0].m_xmf4Specular = XMFLOAT4(0.8f, 0.8f, 0.8f, 0.0f);
-    m_pLights[0].m_xmf3Direction = XMFLOAT3(1.0f, -1.0f, 0.0f);
-
-    m_pLights[1].m_bEnable = true;
-    m_pLights[1].m_nType = SPOT_LIGHT;
-    m_pLights[1].m_fRange = 500.0f;
-    m_pLights[1].m_xmf4Ambient = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f);
-    m_pLights[1].m_xmf4Diffuse = XMFLOAT4(0.4f, 0.4f, 0.4f, 1.0f);
-    m_pLights[1].m_xmf4Specular = XMFLOAT4(0.3f, 0.3f, 0.3f, 0.0f);
-    m_pLights[1].m_xmf3Attenuation = XMFLOAT3(1.0f, 0.01f, 0.0001f);
-    m_pLights[1].m_fFalloff = 8.0f;
-    m_pLights[1].m_fPhi = (float)cos(XMConvertToRadians(20.0f));
-    m_pLights[1].m_fTheta = (float)cos(XMConvertToRadians(10.0f));
-
-    player_searchlight = &m_pLights[1];
+    m_pLights[0].m_xmf4Ambient = XMFLOAT4(0.5f, 0.5f, 0.5f, 1.0f);
+    m_pLights[0].m_xmf4Diffuse = XMFLOAT4(0.8f, 0.8f, 0.8f, 1.0f);
+    m_pLights[0].m_xmf4Specular = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+    m_pLights[0].m_xmf3Direction = XMFLOAT3(0.0f, -1.0f, 0.0f);
 }
 
 void GameScene::BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList) {
@@ -293,31 +280,40 @@ void GameScene::BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList
 
     BuildDefaultLightsAndMaterials();
 
+    MATERIALLOADINFO material_info { METAL };
+    material_info.m_xmf4AlbedoColor = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f);
+    CMaterial* pMaterial = new CMaterial { };
+    CMaterialColors* pMaterialColors = new CMaterialColors { &material_info };
+    pMaterial->SetMaterialColors(pMaterialColors);
+    pMaterial->SetIlluminatedShader();
+
     {
-        camera = new TankCamera { };
+        camera = new CCamera { };
         adaptCamera();
     }
 
-    CMeshLoadInfo bullet_info = CMeshLoadInfo::CubeInfo(0.6f, 0.6f, 3.0f);
-    CMesh* bullet_mesh = new CMeshIlluminatedFromFile { pd3dDevice, pd3dCommandList, &bullet_info };
-
     {
-        m_pPlayer = new CTankPlayer {
+        m_pPlayer = new ChessPlayer {
             pd3dDevice, pd3dCommandList, m_pd3dGraphicsRootSignature
         };
-        m_pPlayer->SetPosition(XMFLOAT3 { 0.0f, 0.0f, 0.0f });
+        m_pPlayer->SetPosition(XMFLOAT3 { 1.0f, 0.0f, 0.0f });
         m_pPlayer->setBoundingBox({ 0.0f, 0.5f, 0.0f }, { 0.5f, 0.5f, 1.0f });
-
-        m_pPlayer->setBulletMesh(bullet_mesh);
-        m_pPlayer->setBulletBoundingBox({ 0.0f, 0.0f, 0.0f }, { 0.3f, 0.3f, 2.0f });        // 너무 빨라서 안맞을수 있으니 길이를 늘려서 충돌확률 높이기
+        //m_pPlayer->SetMaterial(0, pMaterial);
 
         m_pObjects.push_back(m_pPlayer);
     }
 
-    CMeshLoadInfo cube_info = CMeshLoadInfo::CubeInfo(0.2f, 0.2f, 0.2f);
+    CMeshLoadInfo cube_info = CMeshLoadInfo::CubeInfo(1.0f, 1.0f, 1.0f);
     CMesh* cube_mesh = new CMeshIlluminatedFromFile { pd3dDevice, pd3dCommandList, &cube_info };
 
-    CExplosiveObject::PrepareExplosion(pd3dDevice, pd3dCommandList, cube_mesh);
+    {
+        CubeObject* cube = new CubeObject { };
+        cube->SetMesh(cube_mesh);
+        cube->SetPosition(0.0f, -1.0f, 0.0f);
+        cube->SetMaterial(0, pMaterial);
+
+        m_pObjects.push_back(cube);
+    }
 
     CreateShaderVariables(pd3dDevice, pd3dCommandList);
 }
@@ -326,43 +322,7 @@ void GameScene::BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList
 void GameScene::AnimateObjects(float fTimeElapsed) {
     movePlayer(fTimeElapsed);
 
-    {
-        auto cannon_direction = m_pPlayer->getCannonLook();
-        auto look_direction = m_pPlayer->getLookDirection();
-
-        {
-            float look_angle = -m_pPlayer->getLookDirectionPitch();
-            float cannon_angle = m_pPlayer->getCannonAngle();
-            float angle = look_angle - cannon_angle;
-            if(abs(angle) < 1.0f) angle = 0.0f;
-            m_pPlayer->rotateCannon(fTimeElapsed, angle);
-        }
-
-        {
-            auto turret_direction = cannon_direction;
-            turret_direction.y = 0.0f;
-            turret_direction = Vector3::Normalize(turret_direction);
-
-            look_direction.y = 0.0f;
-            look_direction = Vector3::Normalize(look_direction);
-
-            float angle = acosf(Vector3::DotProduct(turret_direction, look_direction));
-            angle = XMConvertToDegrees(angle);
-            if(angle > 1.0f) {
-                if(Vector3::CrossProduct(turret_direction, look_direction).y < 0.0f) {
-                    angle = -angle;
-                }
-                m_pPlayer->rotateTurret(fTimeElapsed, angle);
-            }
-        }
-    }
-
     Scene::AnimateObjects(fTimeElapsed);
-
-    if(player_searchlight) {
-        player_searchlight->m_xmf3Position = m_pPlayer->getCannonPosition();
-        player_searchlight->m_xmf3Direction = m_pPlayer->getCannonLook();
-    }
 
     updateCamera();
 }
@@ -379,10 +339,8 @@ bool GameScene::OnProcessingMouseMessage(HWND hWnd, UINT nMessageID, WPARAM wPar
             mouse_pressed = false;
             break;
         case WM_RBUTTONDOWN:
-            camera->switchTo(CCamera::Mode::FirstPerson);
             break;
         case WM_RBUTTONUP:
-            camera->switchTo(CCamera::Mode::ThirdPerson);
             break;
         case WM_MOUSEMOVE: if(mouse_pressed) {
             POINT ptCursorPos;
@@ -390,7 +348,7 @@ bool GameScene::OnProcessingMouseMessage(HWND hWnd, UINT nMessageID, WPARAM wPar
             float cxMouseDelta = (float)(ptCursorPos.x - old_cursor_pos.x) / 3.0f;
             float cyMouseDelta = (float)(ptCursorPos.y - old_cursor_pos.y) / 3.0f;
             if(cxMouseDelta || cyMouseDelta) {
-                m_pPlayer->rotateLookDirection(cyMouseDelta, cxMouseDelta);
+                
             }
             SetCursorPos(old_cursor_pos.x, old_cursor_pos.y);
             break;
@@ -428,8 +386,6 @@ void GameScene::Render(ID3D12GraphicsCommandList* pd3dCommandList) {
 
 
 void GameScene::movePlayer(float fTimeElapsed) {
-    if(m_pPlayer->m_bBlowingUp) return;
-
     UCHAR pKeyBuffer[256];
     if(GetKeyboardState(pKeyBuffer)) {
         XMFLOAT3 xmf3Shift = { 0.0f, 0.0f, 0.0f };
@@ -438,10 +394,8 @@ void GameScene::movePlayer(float fTimeElapsed) {
 
         xmf3Shift = Vector3::ScalarProduct(xmf3Shift, player_speed * fTimeElapsed);
 
-        if(pKeyBuffer['A'] & 0xF0) m_pPlayer->rotateY(-player_rotation_speed * fTimeElapsed);
-        if(pKeyBuffer['D'] & 0xF0) m_pPlayer->rotateY(player_rotation_speed * fTimeElapsed);
-
-        if(pKeyBuffer[VK_SPACE] & 0xF0) m_pPlayer->fire();
+        //if(pKeyBuffer['A'] & 0xF0) m_pPlayer->rotateY(-player_rotation_speed * fTimeElapsed);
+        //if(pKeyBuffer['D'] & 0xF0) m_pPlayer->rotateY(player_rotation_speed * fTimeElapsed);
 
         m_pPlayer->Move(xmf3Shift, true);
     }
@@ -449,21 +403,9 @@ void GameScene::movePlayer(float fTimeElapsed) {
 
 
 void GameScene::updateCamera() {
-    if(m_pPlayer->m_bBlowingUp) return;
-
     XMFLOAT3 up { 0.0f, 1.0f, 0.0f };
-    XMFLOAT3 look = m_pPlayer->getLookDirection();
-    XMFLOAT3 right = Vector3::CrossProduct(up, look, true);
-    XMFLOAT3 position = m_pPlayer->getTurretPosition();
-    XMFLOAT3 offset = camera->getOffset();
-    XMFLOAT3 look_at = Vector3::Add(position, Vector3::ScalarProduct(look, offset.z+1.0f, false));
-    
-    position = Vector3::Add(position, Vector3::ScalarProduct(look, offset.z, false));
-    position = Vector3::Add(position, Vector3::ScalarProduct(up, offset.y, false));
-    position = Vector3::Add(position, Vector3::ScalarProduct(right, offset.x, false));
-    
-    look_at = Vector3::Add(look_at, Vector3::ScalarProduct(up, offset.y, false));
-    look_at = Vector3::Add(look_at, Vector3::ScalarProduct(right, offset.x, false));
+    XMFLOAT3 position { 0.0f, 2.0f, -0.01f };
+    XMFLOAT3 look_at { 0.0f, 0.0f, 0.0f };
 
     camera->GenerateViewMatrix(position, look_at, up);
 }

@@ -86,10 +86,8 @@ protected:
 class GameScene : public Scene {
 private:
     CPlayer* m_pPlayer = nullptr;
-
     float player_speed = 100.0f;
     float player_rotation_speed = 45.0f;
-    LIGHT* player_searchlight = nullptr;
 
     bool mouse_pressed = false;
 
