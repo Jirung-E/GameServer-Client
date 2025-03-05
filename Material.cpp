@@ -7,9 +7,10 @@
 
 
 CMaterialColors::CMaterialColors(MATERIALLOADINFO* pMaterialInfo) {
+    m_xmf4Ambient = Vector4::Multiply(pMaterialInfo->m_xmf4AlbedoColor.w, pMaterialInfo->m_xmf4AlbedoColor);
     m_xmf4Diffuse = pMaterialInfo->m_xmf4AlbedoColor;
     m_xmf4Specular = pMaterialInfo->m_xmf4SpecularColor; //(r,g,b,a=power)
-    m_xmf4Specular.w = (pMaterialInfo->m_fGlossiness * 255.0f);
+    m_xmf4Specular.w = pMaterialInfo->m_fGlossiness;
     m_xmf4Emissive = pMaterialInfo->m_xmf4EmissiveColor;
 }
 

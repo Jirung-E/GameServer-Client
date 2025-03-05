@@ -820,7 +820,7 @@ void CRotatingObject::Animate(float fTimeElapsed, XMFLOAT4X4* pxmf4x4Parent) {
 
 
 CubeObject::CubeObject() : CGameObject { } {
-    MATERIALLOADINFO material_info { BASIC };
+    MATERIALLOADINFO material_info { };
     m_nMaterials = 1;
     m_ppMaterials = new CMaterial*[1];
     m_ppMaterials[0] = NULL;

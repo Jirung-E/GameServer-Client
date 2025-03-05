@@ -34,20 +34,31 @@ cbuffer cbLights : register(b4) {
 float4 DirectionalLight(int nIndex, float3 vNormal, float3 vToCamera) {
     float3 vToLight = -gLights[nIndex].m_vDirection;
     
-    float fDiffuseFactor = dot(vToLight, vNormal);
-    float fSpecularFactor = 0.0f;
+    float glossiness = gMaterial.m_cSpecular.a;
     
-    if(fDiffuseFactor > 0.0f) {
-        if(gMaterial.m_cSpecular.a != 0.0f) {
-            float3 vHalf = normalize(vToCamera + vToLight);
-            fSpecularFactor = pow(max(dot(vHalf, vNormal), 0.0f), gMaterial.m_cSpecular.a);
+    float4 ambient = gLights[nIndex].m_cAmbient * gMaterial.m_cAmbient;
+    float4 diffuse = float4(0.0f, 0.0f, 0.0f, 0.0f);
+    float4 specular = float4(0.0f, 0.0f, 0.0f, 0.0f);
+    
+    float diffuse_light = max(dot(vNormal, vToLight), 0.0f);
+    if(diffuse_light > 0.0f) {
+        diffuse_light = gLights[nIndex].m_cDiffuse * diffuse_light;
+        diffuse = gMaterial.m_cDiffuse * diffuse_light;
+        
+        if(glossiness != 0.0f) {
+            float3 r = reflect(-vToLight, vNormal);
+            float specular_light = max(dot(vToCamera, r), 0.0f);
+            if(specular_light > 0.0f) {
+                specular_light = gLights[nIndex].m_cSpecular * pow(specular_light, glossiness * 255);
+                specular = gMaterial.m_cSpecular * specular_light * glossiness;
+            }
         }
     }
-    else {
-        fDiffuseFactor = 0.0f;
-    }
 
-    return (gLights[nIndex].m_cAmbient * gMaterial.m_cAmbient) + (gLights[nIndex].m_cDiffuse * fDiffuseFactor * gMaterial.m_cDiffuse) + (gLights[nIndex].m_cSpecular * fSpecularFactor * gMaterial.m_cSpecular);
+    return ambient + diffuse + specular;
+    //return (gLights[nIndex].m_cAmbient * gMaterial.m_cAmbient) 
+    //+ (gLights[nIndex].m_cDiffuse * fDiffuseFactor * gMaterial.m_cDiffuse) 
+    //+ (gLights[nIndex].m_cSpecular * fSpecularFactor * gMaterial.m_cSpecular);
 }
 
 float4 PointLight(int nIndex, float3 vPosition, float3 vNormal, float3 vToCamera) {
@@ -64,7 +75,7 @@ float4 PointLight(int nIndex, float3 vPosition, float3 vNormal, float3 vToCamera
         if(fDiffuseFactor > 0.0f) {
             if(gMaterial.m_cSpecular.a != 0.0f) {
                 float3 vHalf = normalize(vToCamera + vToLight);
-                fSpecularFactor = pow(max(dot(vHalf, vNormal), 0.0f), gMaterial.m_cSpecular.a);
+                fSpecularFactor = pow(max(dot(vHalf, vNormal), 0.0f), gMaterial.m_cSpecular.a * 255);
             }
             
             fAttenuationFactor = 1.0f / dot(gLights[nIndex].m_vAttenuation, float3(1.0f, fDistance, fDistance * fDistance));

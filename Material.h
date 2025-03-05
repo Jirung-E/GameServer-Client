@@ -93,28 +93,3 @@ public:
 
     static void PrepareShaders(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, ID3D12RootSignature* pd3dGraphicsRootSignature);
 };
-
-
-
-
-
-const MATERIALLOADINFO BASIC = {
-    XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f),
-    XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f),
-    XMFLOAT4(0.5f, 0.5f, 0.5f, 1.0f),
-    0.8f, 0.0f, 0.0f, 0.0f, 0x00
-};
-
-const MATERIALLOADINFO METAL = {
-    XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f),
-    XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f),
-    XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f),
-    1.0f, 0.0f, 0.0f, 0.0f, 0x00
-};
-
-const MATERIALLOADINFO MATTE = {
-    XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f),
-    XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f),
-    XMFLOAT4(0.2f, 0.2f, 0.2f, 1.0f),
-    0.2f, 0.0f, 0.0f, 0.0f, 0x00
-};

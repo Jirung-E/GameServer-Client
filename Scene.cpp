@@ -263,14 +263,14 @@ void GameScene::BuildDefaultLightsAndMaterials() {
     m_pLights = new LIGHT[m_nLights];
     ::ZeroMemory(m_pLights, sizeof(LIGHT) * m_nLights);
 
-    m_xmf4GlobalAmbient = XMFLOAT4 { 0.2f, 0.2f, 0.2f, 1.0f };
+    m_xmf4GlobalAmbient = XMFLOAT4 { 0.1f, 0.1f, 0.1f, 1.0f };
 
     m_pLights[0].m_bEnable = true;
     m_pLights[0].m_nType = DIRECTIONAL_LIGHT;
-    m_pLights[0].m_xmf4Ambient = XMFLOAT4(0.5f, 0.5f, 0.5f, 1.0f);
-    m_pLights[0].m_xmf4Diffuse = XMFLOAT4(0.8f, 0.8f, 0.8f, 1.0f);
+    m_pLights[0].m_xmf4Ambient = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f);
+    m_pLights[0].m_xmf4Diffuse = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
     m_pLights[0].m_xmf4Specular = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
-    m_pLights[0].m_xmf3Direction = XMFLOAT3(0.0f, -1.0f, 0.0f);
+    m_pLights[0].m_xmf3Direction = Vector3::Normalize(XMFLOAT3(1.0f, -2.4f, -1.0f));
 }
 
 void GameScene::BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList) {
@@ -280,12 +280,23 @@ void GameScene::BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList
 
     BuildDefaultLightsAndMaterials();
 
-    MATERIALLOADINFO material_info { METAL };
-    material_info.m_xmf4AlbedoColor = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f);
-    CMaterial* pMaterial = new CMaterial { };
-    CMaterialColors* pMaterialColors = new CMaterialColors { &material_info };
-    pMaterial->SetMaterialColors(pMaterialColors);
-    pMaterial->SetIlluminatedShader();
+    CMaterialColors* black_metal = new CMaterialColors { };
+    black_metal->m_xmf4Ambient = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f);
+    black_metal->m_xmf4Diffuse = XMFLOAT4(0.1f, 0.1f, 0.1f, 1.0f);
+    black_metal->m_xmf4Specular = XMFLOAT4(1.0f, 1.0f, 1.0f, 0.95f);
+    black_metal->m_xmf4Emissive = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f);
+    CMaterial* black_material = new CMaterial { };
+    black_material->SetMaterialColors(black_metal);
+    black_material->SetIlluminatedShader();
+
+    CMaterialColors* white_metal = new CMaterialColors { };
+    white_metal->m_xmf4Ambient = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+    white_metal->m_xmf4Diffuse = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+    white_metal->m_xmf4Specular = XMFLOAT4(1.0f, 1.0f, 1.0f, 0.7f);
+    white_metal->m_xmf4Emissive = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f);
+    CMaterial* white_material = new CMaterial { };
+    white_material->SetMaterialColors(white_metal);
+    white_material->SetIlluminatedShader();
 
     {
         camera = new CCamera { };
@@ -296,23 +307,31 @@ void GameScene::BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList
         m_pPlayer = new ChessPlayer {
             pd3dDevice, pd3dCommandList, m_pd3dGraphicsRootSignature
         };
-        m_pPlayer->SetPosition(XMFLOAT3 { 1.0f, 0.0f, 0.0f });
-        m_pPlayer->setBoundingBox({ 0.0f, 0.5f, 0.0f }, { 0.5f, 0.5f, 1.0f });
+        m_pPlayer->SetPosition(XMFLOAT3 { 3.0f, 0.0f, 3.0f });
         //m_pPlayer->SetMaterial(0, pMaterial);
 
         m_pObjects.push_back(m_pPlayer);
     }
 
-    CMeshLoadInfo cube_info = CMeshLoadInfo::CubeInfo(1.0f, 1.0f, 1.0f);
-    CMesh* cube_mesh = new CMeshIlluminatedFromFile { pd3dDevice, pd3dCommandList, &cube_info };
-
     {
-        CubeObject* cube = new CubeObject { };
-        cube->SetMesh(cube_mesh);
-        cube->SetPosition(0.0f, -1.0f, 0.0f);
-        cube->SetMaterial(0, pMaterial);
+        CMeshLoadInfo cube_info = CMeshLoadInfo::CubeInfo(1.0f, 1.0f, 1.0f);
+        CMesh* cube_mesh = new CMeshIlluminatedFromFile { pd3dDevice, pd3dCommandList, &cube_info };
 
-        m_pObjects.push_back(cube);
+        for(int i=0; i<8; ++i) {
+            for(int k=0; k<8; ++k) {
+                CubeObject* cube = new CubeObject { };
+                cube->SetMesh(cube_mesh);
+                cube->SetPosition(k, -0.5f, i);
+                if((i + k) % 2 == 0) {
+                    cube->SetMaterial(0, white_material);
+                }
+                else {
+                    cube->SetMaterial(0, black_material);
+                }
+
+                m_pObjects.push_back(cube);
+            }
+        }
     }
 
     CreateShaderVariables(pd3dDevice, pd3dCommandList);
@@ -404,8 +423,8 @@ void GameScene::movePlayer(float fTimeElapsed) {
 
 void GameScene::updateCamera() {
     XMFLOAT3 up { 0.0f, 1.0f, 0.0f };
-    XMFLOAT3 position { 0.0f, 2.0f, -0.01f };
-    XMFLOAT3 look_at { 0.0f, 0.0f, 0.0f };
+    XMFLOAT3 position { 3.5f, 5.0f, 3.4f };
+    XMFLOAT3 look_at { 3.5f, 0.0f, 3.5f };
 
     camera->GenerateViewMatrix(position, look_at, up);
 }
