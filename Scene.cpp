@@ -308,7 +308,6 @@ void GameScene::BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList
             pd3dDevice, pd3dCommandList, m_pd3dGraphicsRootSignature
         };
         m_pPlayer->SetPosition(XMFLOAT3 { 3.0f, 0.0f, 3.0f });
-        //m_pPlayer->SetMaterial(0, pMaterial);
 
         m_pObjects.push_back(m_pPlayer);
     }
@@ -323,10 +322,10 @@ void GameScene::BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList
                 cube->SetMesh(cube_mesh);
                 cube->SetPosition(k, -0.5f, i);
                 if((i + k) % 2 == 0) {
-                    cube->SetMaterial(0, white_material);
+                    cube->SetMaterial(0, black_material);
                 }
                 else {
-                    cube->SetMaterial(0, black_material);
+                    cube->SetMaterial(0, white_material);
                 }
 
                 m_pObjects.push_back(cube);
@@ -380,6 +379,8 @@ bool GameScene::OnProcessingMouseMessage(HWND hWnd, UINT nMessageID, WPARAM wPar
 }
 
 bool GameScene::OnProcessingKeyboardMessage(HWND hWnd, UINT nMessageID, WPARAM wParam, LPARAM lParam) {
+    auto player_position = m_pPlayer->GetPosition();
+
     switch(nMessageID) {
         case WM_KEYUP:
             switch(wParam) {
@@ -391,6 +392,36 @@ bool GameScene::OnProcessingKeyboardMessage(HWND hWnd, UINT nMessageID, WPARAM w
             }
             break;
         case WM_KEYDOWN:
+            switch(wParam) {
+                case VK_RIGHT:
+                    player_position.x += 1.0f;
+                    if(player_position.x > 7.0f) {
+                        player_position.x = 7.0f;
+                    }
+                    m_pPlayer->SetPosition(player_position);
+                    return true;
+                case VK_LEFT:
+                    player_position.x -= 1.0f;
+                    if(player_position.x < 0.0f) {
+                        player_position.x = 0.0f;
+                    }
+                    m_pPlayer->SetPosition(player_position);
+                    return true;
+                case VK_UP:
+                    player_position.z += 1.0f;
+                    if(player_position.z > 7.0f) {
+                        player_position.z = 7.0f;
+                    }
+                    m_pPlayer->SetPosition(player_position);
+                    return true;
+                case VK_DOWN:
+                    player_position.z -= 1.0f;
+                    if(player_position.z < 0.0f) {
+                        player_position.z = 0.0f;
+                    }
+                    m_pPlayer->SetPosition(player_position);
+                    return true;
+            }
         default:
             break;
     }
