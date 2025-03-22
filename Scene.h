@@ -5,11 +5,8 @@
 #include "stdafx.h"
 #include "Camera.h"
 #include "GameObject.h"
-//#include "Airplane.h"
-
 #include "Shader.h"
 #include "Player.h"
-
 #include "Light.h"
 
 

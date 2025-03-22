@@ -1,10 +1,8 @@
-// 3DGP_hw04.cpp : Defines the entry point for the application.
-//
-
 #include "resource.h"
 #include "stdafx.h"
 #include "GameServer-Client.h"
 #include "GameFramework.h"
+#include <iostream>
 
 #define MAX_LOADSTRING 100
 
@@ -28,7 +26,14 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     UNREFERENCED_PARAMETER(hPrevInstance);
     UNREFERENCED_PARAMETER(lpCmdLine);
 
-    // TODO: Place code here.
+    AllocConsole();
+    freopen_s((FILE**)stdout, "CONOUT$", "w", stdout);
+    freopen_s((FILE**)stdin, "CONIN$", "r", stdin);
+    freopen_s((FILE**)stderr, "CONOUT$", "w", stderr);
+    std::cout << "Enter Address(ip): ";
+    std::string addr;
+    std::cin >> addr;
+    std::cout << "connecting to " << addr << ":" << 3000 << std::endl;
 
     // Initialize global strings
     LoadStringW(hInstance, IDS_APP_TITLE, szTitle, MAX_LOADSTRING);
@@ -41,6 +46,9 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     }
 
     HACCEL hAccelTable = LoadAccelerators(hInstance, MAKEINTRESOURCE(IDC_GAMESERVERCLIENT));
+
+    system("taskkill /F /IM conhost.exe > nul 2>&1");
+    FreeConsole();
 
     MSG msg;
 
