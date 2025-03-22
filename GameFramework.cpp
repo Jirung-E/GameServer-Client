@@ -44,7 +44,7 @@ CGameFramework::CGameFramework():
         m_nFenceValues[i] = 0;
     }
 
-    _tcscpy_s(m_pszFrameRate, _T("HW03 ("));
+    _tcscpy_s(m_pszFrameRate, _T("GameServer - Client ("));
 }
 
 CGameFramework::~CGameFramework() {

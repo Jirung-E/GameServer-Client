@@ -2,6 +2,8 @@
 
 #include "Shader.h"
 
+#include <iostream>
+
 
 Scene::Scene():
     scene_width { FRAME_BUFFER_WIDTH }, 
@@ -240,14 +242,40 @@ void Scene::adaptCamera() {
 
 
 
-GameScene::GameScene(): Scene { } {
+GameScene::GameScene() : Scene { } {
     bg_color = { 0.0f, 0.125f, 0.3f, 1.0f };
     near_plane_distance = 0.1f;
     far_plane_distance = 500.0f;
+
+    std::cout << "Enter Address(ip): ";
+    std::string addr;
+    std::cin >> addr;
+    std::cout << "connecting to " << addr << ":" << 3000 << std::endl;
+
+    tcp_connection.connect(addr);
+    tcp_connection.setNoBlock(true);
+
+    recv_thread = std::thread {
+        [&]() {
+            while(true) {
+                Packet packet = tcp_connection.receive();
+
+                XMFLOAT3 player_position { 
+                    static_cast<float>(packet.data[0]), 
+                    0.0f, 
+                    static_cast<float>(packet.data[1]),
+                };
+                if(m_pPlayer) {
+                    m_pPlayer->SetPosition(player_position);
+                }
+            }
+        }
+    };
+    recv_thread.detach();
 }
 
 GameScene::~GameScene() {
-
+    
 }
 
 
@@ -259,7 +287,7 @@ void GameScene::CreateShaderVariables(ID3D12Device* pd3dDevice, ID3D12GraphicsCo
 
 
 void GameScene::BuildDefaultLightsAndMaterials() {
-    m_nLights = 1;        // 플레이어, 태양
+    m_nLights = 1;        // 태양
     m_pLights = new LIGHT[m_nLights];
     ::ZeroMemory(m_pLights, sizeof(LIGHT) * m_nLights);
 
@@ -379,8 +407,6 @@ bool GameScene::OnProcessingMouseMessage(HWND hWnd, UINT nMessageID, WPARAM wPar
 }
 
 bool GameScene::OnProcessingKeyboardMessage(HWND hWnd, UINT nMessageID, WPARAM wParam, LPARAM lParam) {
-    auto player_position = m_pPlayer->GetPosition();
-
     switch(nMessageID) {
         case WM_KEYUP:
             switch(wParam) {
@@ -392,34 +418,27 @@ bool GameScene::OnProcessingKeyboardMessage(HWND hWnd, UINT nMessageID, WPARAM w
             }
             break;
         case WM_KEYDOWN:
+            Packet packet;
             switch(wParam) {
                 case VK_RIGHT:
-                    player_position.x += 1.0f;
-                    if(player_position.x > 7.0f) {
-                        player_position.x = 7.0f;
-                    }
-                    m_pPlayer->SetPosition(player_position);
+                    memcpy(packet.data, "right", 5);
+                    packet.size = 5;
+                    tcp_connection.send(packet);
                     return true;
                 case VK_LEFT:
-                    player_position.x -= 1.0f;
-                    if(player_position.x < 0.0f) {
-                        player_position.x = 0.0f;
-                    }
-                    m_pPlayer->SetPosition(player_position);
+                    memcpy(packet.data, "left", 4);
+                    packet.size = 4;
+                    tcp_connection.send(packet);
                     return true;
                 case VK_UP:
-                    player_position.z += 1.0f;
-                    if(player_position.z > 7.0f) {
-                        player_position.z = 7.0f;
-                    }
-                    m_pPlayer->SetPosition(player_position);
+                    memcpy(packet.data, "up", 2);
+                    packet.size = 2;
+                    tcp_connection.send(packet);
                     return true;
                 case VK_DOWN:
-                    player_position.z -= 1.0f;
-                    if(player_position.z < 0.0f) {
-                        player_position.z = 0.0f;
-                    }
-                    m_pPlayer->SetPosition(player_position);
+                    memcpy(packet.data, "down", 4);
+                    packet.size = 4;
+                    tcp_connection.send(packet);
                     return true;
             }
         default:

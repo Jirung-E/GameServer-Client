@@ -1,6 +1,7 @@
 #pragma once
 
 #include <vector>
+#include <thread>
 
 #include "stdafx.h"
 #include "Camera.h"
@@ -8,6 +9,8 @@
 #include "Shader.h"
 #include "Player.h"
 #include "Light.h"
+#include "Network.h"
+#include "Console.h"
 
 
 class Scene {
@@ -89,6 +92,12 @@ private:
     bool mouse_pressed = false;
 
     POINT old_cursor_pos { };
+
+    Console console;
+    WsaGuard wsa_guard;
+    TcpConnection tcp_connection;
+
+    std::thread recv_thread;
 
 public:
 	GameScene();

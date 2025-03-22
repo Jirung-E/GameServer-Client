@@ -19,21 +19,14 @@ BOOL                InitInstance(HINSTANCE, int);
 LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
 
-int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
+int APIENTRY wWinMain(
+    _In_ HINSTANCE hInstance,
     _In_opt_ HINSTANCE hPrevInstance,
     _In_ LPWSTR    lpCmdLine,
-    _In_ int       nCmdShow) {
+    _In_ int       nCmdShow
+) {
     UNREFERENCED_PARAMETER(hPrevInstance);
     UNREFERENCED_PARAMETER(lpCmdLine);
-
-    AllocConsole();
-    freopen_s((FILE**)stdout, "CONOUT$", "w", stdout);
-    freopen_s((FILE**)stdin, "CONIN$", "r", stdin);
-    freopen_s((FILE**)stderr, "CONOUT$", "w", stderr);
-    std::cout << "Enter Address(ip): ";
-    std::string addr;
-    std::cin >> addr;
-    std::cout << "connecting to " << addr << ":" << 3000 << std::endl;
 
     // Initialize global strings
     LoadStringW(hInstance, IDS_APP_TITLE, szTitle, MAX_LOADSTRING);
@@ -46,9 +39,6 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     }
 
     HACCEL hAccelTable = LoadAccelerators(hInstance, MAKEINTRESOURCE(IDC_GAMESERVERCLIENT));
-
-    system("taskkill /F /IM conhost.exe > nul 2>&1");
-    FreeConsole();
 
     MSG msg;
 
