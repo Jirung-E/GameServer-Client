@@ -43,6 +43,8 @@ bool TcpConnection::connect(const std::string& ip) {
         exit(1);
     }
     std::cout << "connected" << std::endl;
+
+    return true;
 }
 
 void TcpConnection::close() {
@@ -64,17 +66,13 @@ void TcpConnection::send(const Packet& packet) {
     WSASend(client_socket, wsabuf, 1, &size_sent, NULL, NULL, NULL);
 }
 
-Packet TcpConnection::receive() {
-    Packet packet;
-
+int TcpConnection::receive(Packet* packet) {
     // WSABUF는 나중에 분리해야함
     WSABUF recv_wsabuf[1];
-    recv_wsabuf[0].buf = packet.data;
-    recv_wsabuf[0].len = sizeof(packet.data);
+    recv_wsabuf[0].buf = packet->data;
+    recv_wsabuf[0].len = sizeof(packet->data);
     DWORD recv_flag = 0;
-    WSARecv(client_socket, recv_wsabuf, 1, &packet.size, &recv_flag, NULL, NULL);
-
-    return packet;
+    return WSARecv(client_socket, recv_wsabuf, 1, &packet->size, &recv_flag, NULL, NULL);
 }
 
 

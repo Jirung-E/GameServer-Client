@@ -58,8 +58,8 @@ public:
     // 일단 성공여부는 리턴하지 않음(무조건 성공이라고 가정)
     void send(const Packet& packet);
     // 일단 성공여부는 리턴하지 않음(무조건 성공이라고 가정)
-    Packet receive();
+    int receive(Packet* packet/*out*/);
 
-private:
+public:
     static void printErrorMessage(int s_err);
 };

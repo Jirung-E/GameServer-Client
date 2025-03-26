@@ -258,7 +258,17 @@ GameScene::GameScene() : Scene { } {
     recv_thread = std::thread {
         [&]() {
             while(true) {
-                Packet packet = tcp_connection.receive();
+                Packet packet;
+                auto res = tcp_connection.receive(&packet);
+                if(res == SOCKET_ERROR) {
+                    auto err_no = WSAGetLastError();
+                    if(err_no != WSAEWOULDBLOCK) {
+                        TcpConnection::printErrorMessage(err_no);
+                        break;
+                    }
+                }
+
+                if(packet.size == 0) continue;
 
                 XMFLOAT3 player_position { 
                     static_cast<float>(packet.data[0]), 
