@@ -486,8 +486,9 @@ void GameScene::processPacket(Packet& packet) {
     switch(packet.type) {
         case 0: {   // init
             client_id = packet.data[0];
-            for(int i=1; i<packet.size; i+=3) {
+            for(int i=0; i<packet.size-2; i+=3) {
                 int client_id = packet.data[i];
+                std::cout << "client_id: " << client_id << std::endl;
                 if(players.find(client_id) == players.end()) {
                     CPlayer* player = new CPlayer { };
                     player->SetMesh(player_mesh);
@@ -500,6 +501,8 @@ void GameScene::processPacket(Packet& packet) {
                     static_cast<float>(packet.data[i+2]),
                 });
             }
+            m_pPlayer = players[client_id];
+            //m_pPlayer->SetMaterial(0, )   // 노란색? 아님 그냥 검은색?
             break;
         }
         case 1: {   // move
