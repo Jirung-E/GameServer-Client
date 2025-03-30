@@ -252,9 +252,6 @@ GameScene::GameScene(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCo
     far_plane_distance = 500.0f;
 
     connectToServer();
-
-    recv_thread = std::thread { [&]() { recvFromServer(); } };
-    recv_thread.detach();
 }
 
 GameScene::~GameScene() {
@@ -315,8 +312,17 @@ void GameScene::BuildObjects() {
     }
 
     {
+        player_mesh = CPlayer::LoadMeshFromFile(m_pd3dDevice, m_pd3dCommandList, "Model/king.obj", 0.5f);
+        m_pPlayer = new CPlayer { };
+        //m_pPlayer->SetMesh(player_mesh);
+        m_pPlayer->SetPosition({ 3.5f, 1.0f, 3.5f });
+        m_pObjects.push_back(m_pPlayer);
+    }
+
+    {
         CMeshLoadInfo cube_info = CMeshLoadInfo::CubeInfo(1.0f, 1.0f, 1.0f);
         CMesh* cube_mesh = new CMeshIlluminatedFromFile { m_pd3dDevice, m_pd3dCommandList, &cube_info };
+        m_pPlayer->SetMesh(cube_mesh);
 
         for(int i=0; i<8; ++i) {
             for(int k=0; k<8; ++k) {
@@ -340,6 +346,8 @@ void GameScene::BuildObjects() {
 
 
 void GameScene::AnimateObjects(float fTimeElapsed) {
+    recvFromServer();
+
     movePlayer(fTimeElapsed);
 
     Scene::AnimateObjects(fTimeElapsed);
@@ -393,25 +401,23 @@ bool GameScene::OnProcessingKeyboardMessage(HWND hWnd, UINT nMessageID, WPARAM w
             break;
         case WM_KEYDOWN:
             Packet packet;
+            packet.size = 3;
+            packet.type = 1;    // move
             switch(wParam) {
                 case VK_RIGHT:
                     packet.data[0] = 0;
-                    packet.size = 1;
                     tcp_connection.send(&packet);
                     return true;
                 case VK_LEFT:
                     packet.data[0] = 1;
-                    packet.size = 1;
                     tcp_connection.send(&packet);
                     return true;
                 case VK_UP:
                     packet.data[0] = 2;
-                    packet.size = 1;
                     tcp_connection.send(&packet);
                     return true;
                 case VK_DOWN:
                     packet.data[0] = 3;
-                    packet.size = 1;
                     tcp_connection.send(&packet);
                     return true;
             }
@@ -467,18 +473,16 @@ void GameScene::connectToServer() {
 void GameScene::recvFromServer() {
     Packet packet;
 
-    while(true) {
-        auto res = tcp_connection.receive(&packet);
-        if(res == SOCKET_ERROR) {
-            auto err_no = WSAGetLastError();
-            if(err_no != WSAEWOULDBLOCK) {
-                TcpConnection::printErrorMessage(err_no);
-                return;
-            }
+    auto res = tcp_connection.receive(&packet);
+    if(res == SOCKET_ERROR) {
+        auto err_no = WSAGetLastError();
+        if(err_no != WSAEWOULDBLOCK) {
+            TcpConnection::printErrorMessage(err_no);
+            return;
         }
+    }
 
-        if(packet.size == 0) continue;
-
+    if(packet.size > 0) {
         processPacket(packet);
     }
 }
@@ -487,29 +491,30 @@ void GameScene::processPacket(Packet& packet) {
     switch(packet.type) {
         case 0: {   // init
             client_id = packet.data[0];
-            m_pPlayer = new ChessPlayer {
-                m_pd3dDevice, m_pd3dCommandList, m_pd3dGraphicsRootSignature
-            };
+            //m_pPlayer = new CPlayer { };
+            //m_pPlayer->SetMesh(player_mesh);
             m_pPlayer->SetPosition(XMFLOAT3 {
                 static_cast<float>(packet.data[1]),
-                0.0f,
+                1.0f,
                 static_cast<float>(packet.data[2]),
             });
-            m_pObjects.push_back(m_pPlayer);
+            //m_pObjects.push_back(m_pPlayer);
             break;
         }
         case 1: {   // move
             int client_id = packet.data[0];
-            if(players.find(client_id) == players.end()) {
-                CPlayer* player = new ChessPlayer { 
-                    m_pd3dDevice, m_pd3dCommandList, m_pd3dGraphicsRootSignature
-                };
+            if(players.find(client_id) == players.end()) {      ///////////////////////// 여기가 이상함
+                CPlayer* player = new CPlayer { };
+                //player->SetMesh(player_mesh);
                 players[client_id] = player;
                 m_pObjects.push_back(player);
+                std::cout << "?" << std::endl;
+                std::cout << client_id << std::endl;
+                std::cout << this->client_id << std::endl;
             }
             players[client_id]->SetPosition({
                 static_cast<float>(packet.data[1]),
-                0.0f,
+                1.0f,
                 static_cast<float>(packet.data[2]),
             });
             break;

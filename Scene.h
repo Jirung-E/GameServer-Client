@@ -91,6 +91,7 @@ private:
     CPlayer* m_pPlayer = nullptr;
     float player_speed = 100.0f;
     float player_rotation_speed = 45.0f;
+    CMesh* player_mesh = nullptr;
 
     bool mouse_pressed = false;
 
@@ -101,8 +102,6 @@ private:
     TcpConnection tcp_connection;
     int client_id = 0;
     std::unordered_map<int, CPlayer*> players;
-
-    std::thread recv_thread;
 
 public:
 	GameScene(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList);

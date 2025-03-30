@@ -19,29 +19,18 @@ protected:
 
 public:
     CPlayer();
-    virtual ~CPlayer();
 
 public:
     XMFLOAT3 GetPosition() { return m_xmf3Position; }
     void SetPosition(const XMFLOAT3& xmf3Position);
 
     virtual void OnPrepareRender();
+
+    static CMesh* LoadMeshFromFile(
+        ID3D12Device* pd3dDevice,
+        ID3D12GraphicsCommandList* pd3dCommandList,
+        const char* pstrFileName,
+        float size = 1.0f
+    );
 };
-
-
-
-
-
-
-
-
-class ChessPlayer : public CPlayer {
-public:
-    ChessPlayer(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, ID3D12RootSignature* pd3dGraphicsRootSignature);
-    virtual ~ChessPlayer();
-
-public:
-    virtual void OnPrepareRender();
-};
-
 
