@@ -378,8 +378,8 @@ void CGameFramework::BuildObjects() {
     m_pd3dCommandList->Reset(m_pd3dCommandAllocator, NULL);
 
     //m_pScene = new LobyScene { };
-    m_pScene = new GameScene { };
-    m_pScene->BuildObjects(m_pd3dDevice, m_pd3dCommandList);
+    m_pScene = new GameScene { m_pd3dDevice, m_pd3dCommandList };
+    m_pScene->BuildObjects();
 
     m_pd3dCommandList->Close();
     ID3D12CommandList* ppd3dCommandLists[] = { m_pd3dCommandList };
@@ -447,7 +447,7 @@ void CGameFramework::FrameAdvance() {
         &d3dDsvCPUDescriptorHandle);
 
     if(m_pScene) {
-        m_pScene->Render(m_pd3dCommandList);
+        m_pScene->Render();
     }
 
     d3dResourceBarrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;

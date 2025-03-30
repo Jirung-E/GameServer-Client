@@ -5,10 +5,12 @@
 #include <iostream>
 
 
-Scene::Scene():
-    scene_width { FRAME_BUFFER_WIDTH }, 
+Scene::Scene(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList):
+    scene_width { FRAME_BUFFER_WIDTH },
     scene_height { FRAME_BUFFER_HEIGHT },
-    camera { nullptr }
+    camera { nullptr },
+    m_pd3dDevice { pd3dDevice },
+    m_pd3dCommandList { pd3dCommandList }
 {
 
 }
@@ -31,7 +33,7 @@ bool Scene::ProcessInput(UCHAR* pKeysBuffer) {
 }
 
 
-ID3D12RootSignature* Scene::CreateGraphicsRootSignature(ID3D12Device* pd3dDevice) {
+ID3D12RootSignature* Scene::CreateGraphicsRootSignature() {
     ID3D12RootSignature* pd3dGraphicsRootSignature = NULL;
 
     D3D12_ROOT_PARAMETER pd3dRootParameters[3];
@@ -74,7 +76,7 @@ ID3D12RootSignature* Scene::CreateGraphicsRootSignature(ID3D12Device* pd3dDevice
     ::D3D12SerializeRootSignature(&d3dRootSignatureDesc, D3D_ROOT_SIGNATURE_VERSION_1,
         &pd3dSignatureBlob, &pd3dErrorBlob);
 
-    pd3dDevice->CreateRootSignature(0, pd3dSignatureBlob->GetBufferPointer(),
+    m_pd3dDevice->CreateRootSignature(0, pd3dSignatureBlob->GetBufferPointer(),
         pd3dSignatureBlob->GetBufferSize(), __uuidof(ID3D12RootSignature), 
         (void**)&pd3dGraphicsRootSignature);
 
@@ -89,10 +91,10 @@ ID3D12RootSignature* Scene::GetGraphicsRootSignature() {
 }
 
 
-void Scene::CreateShaderVariables(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList) {
+void Scene::CreateShaderVariables() {
     UINT ncbElementBytes = ((sizeof(LIGHTS) + 255) & ~255); //256의 배수
     m_pd3dcbLights = ::CreateBufferResource(
-        pd3dDevice, pd3dCommandList, 
+        m_pd3dDevice, m_pd3dCommandList, 
         nullptr, ncbElementBytes, 
         D3D12_HEAP_TYPE_UPLOAD, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER, 
         nullptr
@@ -101,7 +103,7 @@ void Scene::CreateShaderVariables(ID3D12Device* pd3dDevice, ID3D12GraphicsComman
     m_pd3dcbLights->Map(0, nullptr, (void**)&m_pcbMappedLights);
 }
 
-void Scene::UpdateShaderVariables(ID3D12GraphicsCommandList* pd3dCommandList) {
+void Scene::UpdateShaderVariables() {
     ::memcpy(m_pcbMappedLights->m_pLights, m_pLights, sizeof(LIGHT) * m_nLights);
     ::memcpy(&m_pcbMappedLights->m_xmf4GlobalAmbient, &m_xmf4GlobalAmbient, sizeof(XMFLOAT4));
     ::memcpy(&m_pcbMappedLights->m_nLights, &m_nLights, sizeof(int));
@@ -126,8 +128,8 @@ void Scene::BuildDefaultLightsAndMaterials() {
 
 }
 
-void Scene::BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList) {
-    m_pd3dGraphicsRootSignature = CreateGraphicsRootSignature(pd3dDevice);
+void Scene::BuildObjects() {
+    m_pd3dGraphicsRootSignature = CreateGraphicsRootSignature();
 }
 
 void Scene::ReleaseObjects() {
@@ -153,22 +155,22 @@ void Scene::AnimateObjects(float fTimeElapsed) {
 
 
 
-void Scene::Render(ID3D12GraphicsCommandList* pd3dCommandList) {
-    pd3dCommandList->SetGraphicsRootSignature(m_pd3dGraphicsRootSignature);
+void Scene::Render() {
+    m_pd3dCommandList->SetGraphicsRootSignature(m_pd3dGraphicsRootSignature);
 
-    camera->SetViewportsAndScissorRects(pd3dCommandList);
-    camera->UpdateShaderVariables(pd3dCommandList);
+    camera->SetViewportsAndScissorRects(m_pd3dCommandList);
+    camera->UpdateShaderVariables(m_pd3dCommandList);
 
-    UpdateShaderVariables(pd3dCommandList);
+    UpdateShaderVariables();
 
     D3D12_GPU_VIRTUAL_ADDRESS d3dcbLightsGpuVirtualAddress = m_pd3dcbLights->GetGPUVirtualAddress();
-    pd3dCommandList->SetGraphicsRootConstantBufferView(2, d3dcbLightsGpuVirtualAddress); //Lights
+    m_pd3dCommandList->SetGraphicsRootConstantBufferView(2, d3dcbLightsGpuVirtualAddress); //Lights
 
     //씬을 렌더링하는 것은 씬을 구성하는 게임 객체(셰이더를 포함하는 객체)들을 렌더링하는 것이다.
     for(CGameObject* obj : m_pObjects) {
         obj->Animate(m_fElapsedTime, NULL);
         obj->UpdateTransform(NULL);
-        obj->Render(pd3dCommandList, camera);
+        obj->Render(m_pd3dCommandList, camera);
     }
 }
 
@@ -242,45 +244,16 @@ void Scene::adaptCamera() {
 
 
 
-GameScene::GameScene() : Scene { } {
+GameScene::GameScene(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList): 
+    Scene { pd3dDevice, pd3dCommandList }
+{
     bg_color = { 0.0f, 0.125f, 0.3f, 1.0f };
     near_plane_distance = 0.1f;
     far_plane_distance = 500.0f;
 
-    std::cout << "Enter Address(ip): ";
-    std::string addr;
-    std::cin >> addr;
-    std::cout << "connecting to " << addr << ":" << 3000 << std::endl;
+    connectToServer();
 
-    tcp_connection.connect(addr);
-    tcp_connection.setNoBlock(true);
-
-    recv_thread = std::thread {
-        [&]() {
-            while(true) {
-                Packet packet;
-                auto res = tcp_connection.receive(&packet);
-                if(res == SOCKET_ERROR) {
-                    auto err_no = WSAGetLastError();
-                    if(err_no != WSAEWOULDBLOCK) {
-                        TcpConnection::printErrorMessage(err_no);
-                        break;
-                    }
-                }
-
-                if(packet.size == 0) continue;
-
-                XMFLOAT3 player_position { 
-                    static_cast<float>(packet.data[0]), 
-                    0.0f, 
-                    static_cast<float>(packet.data[1]),
-                };
-                if(m_pPlayer) {
-                    m_pPlayer->SetPosition(player_position);
-                }
-            }
-        }
-    };
+    recv_thread = std::thread { [&]() { recvFromServer(); } };
     recv_thread.detach();
 }
 
@@ -289,10 +262,10 @@ GameScene::~GameScene() {
 }
 
 
-void GameScene::CreateShaderVariables(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList) {
-    Scene::CreateShaderVariables(pd3dDevice, pd3dCommandList);
+void GameScene::CreateShaderVariables() {
+    Scene::CreateShaderVariables();
 
-    camera->CreateShaderVariables(pd3dDevice, pd3dCommandList);
+    camera->CreateShaderVariables(m_pd3dDevice, m_pd3dCommandList);
 }
 
 
@@ -311,10 +284,10 @@ void GameScene::BuildDefaultLightsAndMaterials() {
     m_pLights[0].m_xmf3Direction = Vector3::Normalize(XMFLOAT3(1.0f, -2.4f, -1.0f));
 }
 
-void GameScene::BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList) {
-    Scene::BuildObjects(pd3dDevice, pd3dCommandList);
+void GameScene::BuildObjects() {
+    Scene::BuildObjects();
 
-    CMaterial::PrepareShaders(pd3dDevice, pd3dCommandList, m_pd3dGraphicsRootSignature);
+    CMaterial::PrepareShaders(m_pd3dDevice, m_pd3dCommandList, m_pd3dGraphicsRootSignature);
 
     BuildDefaultLightsAndMaterials();
 
@@ -342,17 +315,8 @@ void GameScene::BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList
     }
 
     {
-        m_pPlayer = new ChessPlayer {
-            pd3dDevice, pd3dCommandList, m_pd3dGraphicsRootSignature
-        };
-        m_pPlayer->SetPosition(XMFLOAT3 { 3.0f, 0.0f, 3.0f });
-
-        m_pObjects.push_back(m_pPlayer);
-    }
-
-    {
         CMeshLoadInfo cube_info = CMeshLoadInfo::CubeInfo(1.0f, 1.0f, 1.0f);
-        CMesh* cube_mesh = new CMeshIlluminatedFromFile { pd3dDevice, pd3dCommandList, &cube_info };
+        CMesh* cube_mesh = new CMeshIlluminatedFromFile { m_pd3dDevice, m_pd3dCommandList, &cube_info };
 
         for(int i=0; i<8; ++i) {
             for(int k=0; k<8; ++k) {
@@ -371,7 +335,7 @@ void GameScene::BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList
         }
     }
 
-    CreateShaderVariables(pd3dDevice, pd3dCommandList);
+    CreateShaderVariables();
 }
 
 
@@ -431,24 +395,24 @@ bool GameScene::OnProcessingKeyboardMessage(HWND hWnd, UINT nMessageID, WPARAM w
             Packet packet;
             switch(wParam) {
                 case VK_RIGHT:
-                    memcpy(packet.data, "right", 5);
-                    packet.size = 5;
-                    tcp_connection.send(packet);
+                    packet.data[0] = 0;
+                    packet.size = 1;
+                    tcp_connection.send(&packet);
                     return true;
                 case VK_LEFT:
-                    memcpy(packet.data, "left", 4);
-                    packet.size = 4;
-                    tcp_connection.send(packet);
+                    packet.data[0] = 1;
+                    packet.size = 1;
+                    tcp_connection.send(&packet);
                     return true;
                 case VK_UP:
-                    memcpy(packet.data, "up", 2);
-                    packet.size = 2;
-                    tcp_connection.send(packet);
+                    packet.data[0] = 2;
+                    packet.size = 1;
+                    tcp_connection.send(&packet);
                     return true;
                 case VK_DOWN:
-                    memcpy(packet.data, "down", 4);
-                    packet.size = 4;
-                    tcp_connection.send(packet);
+                    packet.data[0] = 3;
+                    packet.size = 1;
+                    tcp_connection.send(&packet);
                     return true;
             }
         default:
@@ -459,8 +423,8 @@ bool GameScene::OnProcessingKeyboardMessage(HWND hWnd, UINT nMessageID, WPARAM w
 }
 
 
-void GameScene::Render(ID3D12GraphicsCommandList* pd3dCommandList) {
-    Scene::Render(pd3dCommandList);
+void GameScene::Render() {
+    Scene::Render();
 }
 
 
@@ -476,7 +440,7 @@ void GameScene::movePlayer(float fTimeElapsed) {
         //if(pKeyBuffer['A'] & 0xF0) m_pPlayer->rotateY(-player_rotation_speed * fTimeElapsed);
         //if(pKeyBuffer['D'] & 0xF0) m_pPlayer->rotateY(player_rotation_speed * fTimeElapsed);
 
-        m_pPlayer->Move(xmf3Shift, true);
+        //m_pPlayer->Move(xmf3Shift, true);
     }
 }
 
@@ -487,4 +451,70 @@ void GameScene::updateCamera() {
     XMFLOAT3 look_at { 3.5f, 0.0f, 3.5f };
 
     camera->GenerateViewMatrix(position, look_at, up);
+}
+
+
+void GameScene::connectToServer() {
+    std::cout << "Enter Address(ip): ";
+    std::string addr;
+    std::cin >> addr;
+    std::cout << "connecting to " << addr << ":" << 3000 << std::endl;
+
+    tcp_connection.connect(addr);
+    tcp_connection.setNoBlock(true);
+}
+
+void GameScene::recvFromServer() {
+    Packet packet;
+
+    while(true) {
+        auto res = tcp_connection.receive(&packet);
+        if(res == SOCKET_ERROR) {
+            auto err_no = WSAGetLastError();
+            if(err_no != WSAEWOULDBLOCK) {
+                TcpConnection::printErrorMessage(err_no);
+                return;
+            }
+        }
+
+        if(packet.size == 0) continue;
+
+        processPacket(packet);
+    }
+}
+
+void GameScene::processPacket(Packet& packet) {
+    switch(packet.type) {
+        case 0: {   // init
+            client_id = packet.data[0];
+            m_pPlayer = new ChessPlayer {
+                m_pd3dDevice, m_pd3dCommandList, m_pd3dGraphicsRootSignature
+            };
+            m_pPlayer->SetPosition(XMFLOAT3 {
+                static_cast<float>(packet.data[1]),
+                0.0f,
+                static_cast<float>(packet.data[2]),
+            });
+            m_pObjects.push_back(m_pPlayer);
+            break;
+        }
+        case 1: {   // move
+            int client_id = packet.data[0];
+            if(players.find(client_id) == players.end()) {
+                CPlayer* player = new ChessPlayer { 
+                    m_pd3dDevice, m_pd3dCommandList, m_pd3dGraphicsRootSignature
+                };
+                players[client_id] = player;
+                m_pObjects.push_back(player);
+            }
+            players[client_id]->SetPosition({
+                static_cast<float>(packet.data[1]),
+                0.0f,
+                static_cast<float>(packet.data[2]),
+            });
+            break;
+        }
+        default:
+            break;
+    }
 }

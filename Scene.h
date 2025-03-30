@@ -2,6 +2,7 @@
 
 #include <vector>
 #include <thread>
+#include <unordered_map>
 
 #include "stdafx.h"
 #include "Camera.h"
@@ -36,13 +37,15 @@ protected:
 
     float m_fElapsedTime = 0.0f;
 
+    ID3D12Device* m_pd3dDevice = nullptr;
+    ID3D12GraphicsCommandList* m_pd3dCommandList = nullptr;
     ID3D12RootSignature* m_pd3dGraphicsRootSignature = nullptr;
 
 public:
     XMFLOAT4 bg_color { };
 
 public:
-    Scene();
+    Scene(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList);
     virtual ~Scene();
 
 public:
@@ -50,21 +53,21 @@ public:
     virtual bool OnProcessingKeyboardMessage(HWND hWnd, UINT nMessageID, WPARAM wParam, LPARAM lParam);
     virtual bool ProcessInput(UCHAR* pKeysBuffer);
 
-    ID3D12RootSignature* CreateGraphicsRootSignature(ID3D12Device* pd3dDevice);
+    ID3D12RootSignature* CreateGraphicsRootSignature();
     ID3D12RootSignature* GetGraphicsRootSignature();
 
-    virtual void CreateShaderVariables(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList);
-    virtual void UpdateShaderVariables(ID3D12GraphicsCommandList* pd3dCommandList);
+    virtual void CreateShaderVariables();
+    virtual void UpdateShaderVariables();
     virtual void ReleaseShaderVariables();
 
     virtual void ReleaseUploadBuffers();
 
     virtual void BuildDefaultLightsAndMaterials();
-    virtual void BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList);
+    virtual void BuildObjects();
     virtual void ReleaseObjects();
     virtual void AnimateObjects(float fTimeElapsed);
 
-    virtual void Render(ID3D12GraphicsCommandList* pd3dCommandList);
+    virtual void Render();
 
     void setSceneSize(int width, int height);
     int getSceneWidth();
@@ -96,15 +99,17 @@ private:
     Console console;
     WsaGuard wsa_guard;
     TcpConnection tcp_connection;
+    int client_id = 0;
+    std::unordered_map<int, CPlayer*> players;
 
     std::thread recv_thread;
 
 public:
-	GameScene();
+	GameScene(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList);
 	virtual ~GameScene();
 
 public:
-    virtual void CreateShaderVariables(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList);
+    virtual void CreateShaderVariables();
 
     virtual void ReleaseUploadBuffers() {
         Scene::ReleaseUploadBuffers();
@@ -113,18 +118,22 @@ public:
     }
 
     virtual void BuildDefaultLightsAndMaterials();
-    virtual void BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList);
+    virtual void BuildObjects();
 
     virtual void AnimateObjects(float fTimeElapsed);
 
     virtual bool OnProcessingMouseMessage(HWND hWnd, UINT nMessageID, WPARAM wParam, LPARAM lParam);
     virtual bool OnProcessingKeyboardMessage(HWND hWnd, UINT nMessageID, WPARAM wParam, LPARAM lParam);
 
-    virtual void Render(ID3D12GraphicsCommandList* pd3dCommandList);
+    virtual void Render();
 
 protected:
     void movePlayer(float fTimeElapsed);
 
     void updateCamera();
+
+    void connectToServer();
+    void recvFromServer();
+    void processPacket(Packet& packet);
 };
 

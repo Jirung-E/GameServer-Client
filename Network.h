@@ -32,10 +32,13 @@ public:
 };
 
 
+#pragma pack(push, 1)
 struct Packet {
-    mutable char data[1024];
-    DWORD size;
+    char size;
+    char type;
+    char data[1024];
 };
+#pragma pack(pop)
 
 
 // 소멸자에서 소켓을 닫음(RAII)  
@@ -56,7 +59,7 @@ public:
     void setNoBlock(bool no_block);
 
     // 일단 성공여부는 리턴하지 않음(무조건 성공이라고 가정)
-    void send(const Packet& packet);
+    void send(Packet* packet);
     // 일단 성공여부는 리턴하지 않음(무조건 성공이라고 가정)
     int receive(Packet* packet/*out*/);
 

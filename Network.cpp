@@ -57,11 +57,11 @@ void TcpConnection::setNoBlock(bool no_block) {
 }
 
 
-void TcpConnection::send(const Packet& packet) {
+void TcpConnection::send(Packet* packet) {
     // WSABUF는 나중에 분리해야함
     WSABUF wsabuf[1];
-    wsabuf[0].buf = packet.data;
-    wsabuf[0].len = static_cast<ULONG>(packet.size);
+    wsabuf[0].buf = reinterpret_cast<char*>(packet);
+    wsabuf[0].len = static_cast<ULONG>(packet->size);
     DWORD size_sent;
     WSASend(client_socket, wsabuf, 1, &size_sent, NULL, NULL, NULL);
 }
@@ -69,10 +69,11 @@ void TcpConnection::send(const Packet& packet) {
 int TcpConnection::receive(Packet* packet) {
     // WSABUF는 나중에 분리해야함
     WSABUF recv_wsabuf[1];
-    recv_wsabuf[0].buf = packet->data;
-    recv_wsabuf[0].len = sizeof(packet->data);
+    recv_wsabuf[0].buf = reinterpret_cast<char*>(packet);
+    recv_wsabuf[0].len = sizeof(Packet);
+    DWORD size_recv;
     DWORD recv_flag = 0;
-    return WSARecv(client_socket, recv_wsabuf, 1, &packet->size, &recv_flag, NULL, NULL);
+    return WSARecv(client_socket, recv_wsabuf, 1, &size_recv, &recv_flag, NULL, NULL);
 }
 
 
