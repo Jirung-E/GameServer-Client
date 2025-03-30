@@ -14,6 +14,18 @@ CPlayer::CPlayer() : CGameObject { },
     m_xmf3Position { 0.0f, 0.0f, 0.0f }
 {
     OnInitialize();
+
+    MATERIALLOADINFO material_info { };
+    m_nMaterials = 1;
+    m_ppMaterials = new CMaterial*[1];
+    m_ppMaterials[0] = NULL;
+
+    CMaterial* pMaterial = new CMaterial { };
+    CMaterialColors* pMaterialColors = new CMaterialColors { &material_info };
+    pMaterial->SetMaterialColors(pMaterialColors);
+    pMaterial->SetIlluminatedShader();
+
+    SetMaterial(0, pMaterial);
 }
 
 

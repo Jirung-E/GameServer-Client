@@ -313,16 +313,11 @@ void GameScene::BuildObjects() {
 
     {
         player_mesh = CPlayer::LoadMeshFromFile(m_pd3dDevice, m_pd3dCommandList, "Model/king.obj", 0.5f);
-        m_pPlayer = new CPlayer { };
-        //m_pPlayer->SetMesh(player_mesh);
-        m_pPlayer->SetPosition({ 3.5f, 1.0f, 3.5f });
-        m_pObjects.push_back(m_pPlayer);
     }
 
     {
         CMeshLoadInfo cube_info = CMeshLoadInfo::CubeInfo(1.0f, 1.0f, 1.0f);
         CMesh* cube_mesh = new CMeshIlluminatedFromFile { m_pd3dDevice, m_pd3dCommandList, &cube_info };
-        m_pPlayer->SetMesh(cube_mesh);
 
         for(int i=0; i<8; ++i) {
             for(int k=0; k<8; ++k) {
@@ -491,30 +486,33 @@ void GameScene::processPacket(Packet& packet) {
     switch(packet.type) {
         case 0: {   // init
             client_id = packet.data[0];
-            //m_pPlayer = new CPlayer { };
-            //m_pPlayer->SetMesh(player_mesh);
-            m_pPlayer->SetPosition(XMFLOAT3 {
-                static_cast<float>(packet.data[1]),
-                1.0f,
-                static_cast<float>(packet.data[2]),
-            });
-            //m_pObjects.push_back(m_pPlayer);
+            for(int i=1; i<packet.size; i+=3) {
+                int client_id = packet.data[i];
+                if(players.find(client_id) == players.end()) {
+                    CPlayer* player = new CPlayer { };
+                    player->SetMesh(player_mesh);
+                    players[client_id] = player;
+                    m_pObjects.push_back(player);
+                }
+                players[client_id]->SetPosition({
+                    static_cast<float>(packet.data[i+1]),
+                    0.0f,
+                    static_cast<float>(packet.data[i+2]),
+                });
+            }
             break;
         }
         case 1: {   // move
             int client_id = packet.data[0];
-            if(players.find(client_id) == players.end()) {      ///////////////////////// 여기가 이상함
+            if(players.find(client_id) == players.end()) {
                 CPlayer* player = new CPlayer { };
-                //player->SetMesh(player_mesh);
+                player->SetMesh(player_mesh);
                 players[client_id] = player;
                 m_pObjects.push_back(player);
-                std::cout << "?" << std::endl;
-                std::cout << client_id << std::endl;
-                std::cout << this->client_id << std::endl;
             }
             players[client_id]->SetPosition({
                 static_cast<float>(packet.data[1]),
-                1.0f,
+                0.0f,
                 static_cast<float>(packet.data[2]),
             });
             break;
