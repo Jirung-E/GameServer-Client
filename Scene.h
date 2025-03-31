@@ -92,6 +92,10 @@ private:
     float player_speed = 100.0f;
     float player_rotation_speed = 45.0f;
     CMesh* player_mesh = nullptr;
+    
+    CMaterial* black_material = nullptr;
+    CMaterial* white_material = nullptr;
+    CMaterial* gray_material = nullptr;
 
     bool mouse_pressed = false;
 

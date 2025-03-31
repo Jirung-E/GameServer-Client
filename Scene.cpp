@@ -255,7 +255,9 @@ GameScene::GameScene(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCo
 }
 
 GameScene::~GameScene() {
-    
+    black_material->Release();
+    white_material->Release();
+    gray_material->Release();
 }
 
 
@@ -279,6 +281,36 @@ void GameScene::BuildDefaultLightsAndMaterials() {
     m_pLights[0].m_xmf4Diffuse = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
     m_pLights[0].m_xmf4Specular = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
     m_pLights[0].m_xmf3Direction = Vector3::Normalize(XMFLOAT3(1.0f, -2.4f, -1.0f));
+
+    CMaterialColors* black_metal = new CMaterialColors { };
+    black_metal->m_xmf4Ambient = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f);
+    black_metal->m_xmf4Diffuse = XMFLOAT4(0.1f, 0.1f, 0.1f, 1.0f);
+    black_metal->m_xmf4Specular = XMFLOAT4(1.0f, 1.0f, 1.0f, 0.95f);
+    black_metal->m_xmf4Emissive = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f);
+    black_material = new CMaterial { };
+    black_material->SetMaterialColors(black_metal);
+    black_material->SetIlluminatedShader();
+    black_material->AddRef();
+
+    CMaterialColors* white_metal = new CMaterialColors { };
+    white_metal->m_xmf4Ambient = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+    white_metal->m_xmf4Diffuse = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+    white_metal->m_xmf4Specular = XMFLOAT4(1.0f, 1.0f, 1.0f, 0.7f);
+    white_metal->m_xmf4Emissive = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f);
+    white_material = new CMaterial { };
+    white_material->SetMaterialColors(white_metal);
+    white_material->SetIlluminatedShader();
+    white_material->AddRef();
+
+    CMaterialColors* gray_metal = new CMaterialColors { };
+    gray_metal->m_xmf4Ambient = XMFLOAT4(0.5f, 0.5f, 0.5f, 1.0f);
+    gray_metal->m_xmf4Diffuse = XMFLOAT4(0.5f, 0.5f, 0.5f, 1.0f);
+    gray_metal->m_xmf4Specular = XMFLOAT4(1.0f, 1.0f, 1.0f, 0.7f);
+    gray_metal->m_xmf4Emissive = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f);
+    gray_material = new CMaterial { };
+    gray_material->SetMaterialColors(gray_metal);
+    gray_material->SetIlluminatedShader();
+    gray_material->AddRef();
 }
 
 void GameScene::BuildObjects() {
@@ -287,24 +319,6 @@ void GameScene::BuildObjects() {
     CMaterial::PrepareShaders(m_pd3dDevice, m_pd3dCommandList, m_pd3dGraphicsRootSignature);
 
     BuildDefaultLightsAndMaterials();
-
-    CMaterialColors* black_metal = new CMaterialColors { };
-    black_metal->m_xmf4Ambient = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f);
-    black_metal->m_xmf4Diffuse = XMFLOAT4(0.1f, 0.1f, 0.1f, 1.0f);
-    black_metal->m_xmf4Specular = XMFLOAT4(1.0f, 1.0f, 1.0f, 0.95f);
-    black_metal->m_xmf4Emissive = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f);
-    CMaterial* black_material = new CMaterial { };
-    black_material->SetMaterialColors(black_metal);
-    black_material->SetIlluminatedShader();
-
-    CMaterialColors* white_metal = new CMaterialColors { };
-    white_metal->m_xmf4Ambient = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
-    white_metal->m_xmf4Diffuse = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
-    white_metal->m_xmf4Specular = XMFLOAT4(1.0f, 1.0f, 1.0f, 0.7f);
-    white_metal->m_xmf4Emissive = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f);
-    CMaterial* white_material = new CMaterial { };
-    white_material->SetMaterialColors(white_metal);
-    white_material->SetIlluminatedShader();
 
     {
         camera = new CCamera { };
@@ -488,10 +502,10 @@ void GameScene::processPacket(Packet& packet) {
             client_id = packet.data[0];
             for(int i=0; i<packet.size-2; i+=3) {
                 int client_id = packet.data[i];
-                std::cout << "client_id: " << client_id << std::endl;
                 if(players.find(client_id) == players.end()) {
                     CPlayer* player = new CPlayer { };
                     player->SetMesh(player_mesh);
+                    player->SetMaterial(0, gray_material);
                     players[client_id] = player;
                     m_pObjects.push_back(player);
                 }
@@ -502,7 +516,7 @@ void GameScene::processPacket(Packet& packet) {
                 });
             }
             m_pPlayer = players[client_id];
-            //m_pPlayer->SetMaterial(0, )   // 노란색? 아님 그냥 검은색?
+            m_pPlayer->SetMaterial(0, white_material);
             break;
         }
         case 1: {   // move
@@ -510,6 +524,7 @@ void GameScene::processPacket(Packet& packet) {
             if(players.find(client_id) == players.end()) {
                 CPlayer* player = new CPlayer { };
                 player->SetMesh(player_mesh);
+                player->SetMaterial(0, gray_material);
                 players[client_id] = player;
                 m_pObjects.push_back(player);
             }
