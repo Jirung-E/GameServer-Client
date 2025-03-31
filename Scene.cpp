@@ -510,10 +510,10 @@ void GameScene::connectToServer() {
     std::cin >> addr;
     std::cout << "connecting to " << addr << ":" << 3000 << std::endl;
 
-    console.close();
-
     tcp_connection.connect(addr);
     tcp_connection.setNoBlock(true);
+
+    console.close();
 }
 
 void GameScene::recvFromServer() {
