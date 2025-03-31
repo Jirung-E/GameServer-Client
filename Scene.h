@@ -1,7 +1,6 @@
 #pragma once
 
 #include <vector>
-#include <thread>
 #include <unordered_map>
 
 #include "stdafx.h"

@@ -510,6 +510,8 @@ void GameScene::connectToServer() {
     std::cin >> addr;
     std::cout << "connecting to " << addr << ":" << 3000 << std::endl;
 
+    console.close();
+
     tcp_connection.connect(addr);
     tcp_connection.setNoBlock(true);
 }
@@ -533,14 +535,6 @@ void GameScene::recvFromServer() {
 }
 
 void GameScene::processPacket(Packet& packet) {
-    if(packet.type != -1) {
-        std::cout << "packet size: " << (int)packet.size << std::endl;
-        std::cout << "packet type: " << (int)packet.type << std::endl;
-        for(int i=0; i<packet.size-2; ++i) {
-            std::cout << (int)packet.data[i] << " ";
-        }
-        std::cout << std::endl;
-    }
     switch(packet.type) {
         case 0: {   // init
             client_id = packet.data[0];
@@ -548,6 +542,15 @@ void GameScene::processPacket(Packet& packet) {
             float z = static_cast<float>(packet.data[2]);
             m_pPlayer = addPlayer(client_id, x, z);
             m_pPlayer->SetMaterial(0, white_material);
+            int size = packet.size - 2;
+            for(int i=3; i<size-3; i+=3) {
+                int client_id = static_cast<int>(packet.data[i+0]);
+                //std::cout << "client_id: " << client_id << std::endl;
+                float x = static_cast<float>(packet.data[i+1]);
+                float z = static_cast<float>(packet.data[i+2]);
+                auto player = addPlayer(client_id, x, z);
+                player->SetMaterial(0, gray_material);
+            }
             break;
         }
         case 1: {   // update
@@ -558,13 +561,13 @@ void GameScene::processPacket(Packet& packet) {
             }
             for(int i=0; i<size; i+=3) {
                 int client_id = static_cast<int>(packet.data[i+0]);
-                std::cout << "client_id: " << client_id << std::endl;
+                //std::cout << "client_id: " << client_id << std::endl;
                 float x = static_cast<float>(packet.data[i+1]);
                 float z = static_cast<float>(packet.data[i+2]);
                 if(players.find(client_id) == players.end()) {
                     auto player = addPlayer(client_id, x, z);
                     player->SetMaterial(0, gray_material);
-                    std::cout << "new player" << std::endl;
+                    //std::cout << "new player" << std::endl;
                 }
                 else {
                     auto player = players[client_id];
@@ -582,6 +585,7 @@ void GameScene::processPacket(Packet& packet) {
             break;
         }
         default:
+            std::cout << "unknown packet type: " << packet.type << std::endl;
             break;
     }
 }
