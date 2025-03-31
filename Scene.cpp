@@ -543,9 +543,8 @@ void GameScene::processPacket(Packet& packet) {
             m_pPlayer = addPlayer(client_id, x, z);
             m_pPlayer->SetMaterial(0, white_material);
             int size = packet.size - 2;
-            for(int i=3; i<size-3; i+=3) {
+            for(int i=3; i<size; i+=3) {
                 int client_id = static_cast<int>(packet.data[i+0]);
-                //std::cout << "client_id: " << client_id << std::endl;
                 float x = static_cast<float>(packet.data[i+1]);
                 float z = static_cast<float>(packet.data[i+2]);
                 auto player = addPlayer(client_id, x, z);
