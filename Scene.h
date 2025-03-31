@@ -114,15 +114,11 @@ public:
 public:
     virtual void CreateShaderVariables();
 
-    virtual void ReleaseUploadBuffers() {
-        Scene::ReleaseUploadBuffers();
-
-        if(m_pPlayer) m_pPlayer->ReleaseUploadBuffers();
-    }
+    virtual void ReleaseUploadBuffers();
 
     virtual void BuildDefaultLightsAndMaterials();
     virtual void BuildObjects();
-
+    virtual void ReleaseObjects();
     virtual void AnimateObjects(float fTimeElapsed);
 
     virtual bool OnProcessingMouseMessage(HWND hWnd, UINT nMessageID, WPARAM wParam, LPARAM lParam);

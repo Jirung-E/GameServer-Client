@@ -133,12 +133,11 @@ void Scene::BuildObjects() {
 }
 
 void Scene::ReleaseObjects() {
-    if(m_pd3dGraphicsRootSignature) m_pd3dGraphicsRootSignature->Release();
-
     for(CGameObject* obj : m_pObjects) {
         obj->Release();
     }
 
+    if(m_pd3dGraphicsRootSignature) m_pd3dGraphicsRootSignature->Release();
     ReleaseShaderVariables();
 
     if(m_pLights) delete[] m_pLights;
@@ -267,6 +266,14 @@ void GameScene::CreateShaderVariables() {
     camera->CreateShaderVariables(m_pd3dDevice, m_pd3dCommandList);
 }
 
+void GameScene::ReleaseUploadBuffers() {
+    Scene::ReleaseUploadBuffers();
+
+    for(auto& player : players) {
+        player.second->ReleaseUploadBuffers();
+    }
+}
+
 
 void GameScene::BuildDefaultLightsAndMaterials() {
     m_nLights = 1;        // еб╬Г
@@ -353,6 +360,16 @@ void GameScene::BuildObjects() {
     CreateShaderVariables();
 }
 
+void GameScene::ReleaseObjects() {
+    for(auto& player : players) {
+        player.second->Release();
+    }
+
+    if(camera) delete camera;
+
+    Scene::ReleaseObjects();
+}
+
 
 void GameScene::AnimateObjects(float fTimeElapsed) {
     recvFromServer();
@@ -360,6 +377,9 @@ void GameScene::AnimateObjects(float fTimeElapsed) {
     movePlayer(fTimeElapsed);
 
     Scene::AnimateObjects(fTimeElapsed);
+    for(auto& player : players) {
+        player.second->Animate(fTimeElapsed, nullptr);
+    }
 
     updateCamera();
 }
@@ -440,6 +460,12 @@ bool GameScene::OnProcessingKeyboardMessage(HWND hWnd, UINT nMessageID, WPARAM w
 
 void GameScene::Render() {
     Scene::Render();
+
+    for(auto& player : players) {
+        player.second->Animate(m_fElapsedTime, NULL);
+        player.second->UpdateTransform(NULL);
+        player.second->Render(m_pd3dCommandList, camera);
+    }
 }
 
 
@@ -481,6 +507,7 @@ void GameScene::connectToServer() {
 
 void GameScene::recvFromServer() {
     Packet packet;
+    packet.type = -1;
 
     auto res = tcp_connection.receive(&packet);
     if(res == SOCKET_ERROR) {
@@ -497,6 +524,14 @@ void GameScene::recvFromServer() {
 }
 
 void GameScene::processPacket(Packet& packet) {
+    if(packet.type != -1) {
+        std::cout << "packet size: " << (int)packet.size << std::endl;
+        std::cout << "packet type: " << (int)packet.type << std::endl;
+        for(int i=0; i<packet.size-2; ++i) {
+            std::cout << (int)packet.data[i] << " ";
+        }
+        std::cout << std::endl;
+    }
     switch(packet.type) {
         case 0: {   // init
             client_id = packet.data[0];
@@ -507,7 +542,7 @@ void GameScene::processPacket(Packet& packet) {
                     player->SetMesh(player_mesh);
                     player->SetMaterial(0, gray_material);
                     players[client_id] = player;
-                    m_pObjects.push_back(player);
+                    //m_pObjects.push_back(player);
                 }
                 players[client_id]->SetPosition({
                     static_cast<float>(packet.data[i+1]),
@@ -526,13 +561,22 @@ void GameScene::processPacket(Packet& packet) {
                 player->SetMesh(player_mesh);
                 player->SetMaterial(0, gray_material);
                 players[client_id] = player;
-                m_pObjects.push_back(player);
+                //m_pObjects.push_back(player);
             }
             players[client_id]->SetPosition({
                 static_cast<float>(packet.data[1]),
                 0.0f,
                 static_cast<float>(packet.data[2]),
             });
+            break;
+        }
+        case 2: {   // disconnect
+            int client_id = packet.data[0];
+            if(players.find(client_id) != players.end()) {
+                players[client_id]->Release();
+                players.erase(client_id);
+            }
+            std::cout << "client " << client_id << " disconnected" << std::endl;
             break;
         }
         default:
