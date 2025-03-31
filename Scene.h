@@ -127,6 +127,7 @@ public:
     virtual void Render();
 
 protected:
+    CPlayer* addPlayer(int id, const float x, const float z);
     void movePlayer(float fTimeElapsed);
 
     void updateCamera();

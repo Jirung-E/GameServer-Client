@@ -469,6 +469,14 @@ void GameScene::Render() {
 }
 
 
+CPlayer* GameScene::addPlayer(int id, const float x, const float z) {
+    CPlayer* player = new CPlayer { };
+    player->SetMesh(player_mesh);
+    player->SetPosition({ x, 0.0f, z });
+    players.insert({ id, player });
+    return player;
+}
+
 void GameScene::movePlayer(float fTimeElapsed) {
     UCHAR pKeyBuffer[256];
     if(GetKeyboardState(pKeyBuffer)) {
@@ -535,48 +543,41 @@ void GameScene::processPacket(Packet& packet) {
     switch(packet.type) {
         case 0: {   // init
             client_id = packet.data[0];
-            for(int i=0; i<packet.size-2; i+=3) {
-                int client_id = packet.data[i];
-                if(players.find(client_id) == players.end()) {
-                    CPlayer* player = new CPlayer { };
-                    player->SetMesh(player_mesh);
-                    player->SetMaterial(0, gray_material);
-                    players[client_id] = player;
-                    //m_pObjects.push_back(player);
-                }
-                players[client_id]->SetPosition({
-                    static_cast<float>(packet.data[i+1]),
-                    0.0f,
-                    static_cast<float>(packet.data[i+2]),
-                });
-            }
-            m_pPlayer = players[client_id];
+            float x = static_cast<float>(packet.data[1]);
+            float z = static_cast<float>(packet.data[2]);
+            m_pPlayer = addPlayer(client_id, x, z);
             m_pPlayer->SetMaterial(0, white_material);
             break;
         }
-        case 1: {   // move
-            int client_id = packet.data[0];
-            if(players.find(client_id) == players.end()) {
-                CPlayer* player = new CPlayer { };
-                player->SetMesh(player_mesh);
-                player->SetMaterial(0, gray_material);
-                players[client_id] = player;
-                //m_pObjects.push_back(player);
+        case 1: {   // update
+            int size = packet.size - 2;
+            std::unordered_map<int, bool> removed;
+            for(auto& player : players) {
+                removed[player.first] = true;
             }
-            players[client_id]->SetPosition({
-                static_cast<float>(packet.data[1]),
-                0.0f,
-                static_cast<float>(packet.data[2]),
-            });
-            break;
-        }
-        case 2: {   // disconnect
-            int client_id = packet.data[0];
-            if(players.find(client_id) != players.end()) {
-                players[client_id]->Release();
-                players.erase(client_id);
+            for(int i=0; i<size; i+=3) {
+                int client_id = static_cast<int>(packet.data[i+0]);
+                std::cout << "client_id: " << client_id << std::endl;
+                float x = static_cast<float>(packet.data[i+1]);
+                float z = static_cast<float>(packet.data[i+2]);
+                if(players.find(client_id) == players.end()) {
+                    auto player = addPlayer(client_id, x, z);
+                    player->SetMaterial(0, gray_material);
+                    std::cout << "new player" << std::endl;
+                }
+                else {
+                    auto player = players[client_id];
+                    player->SetPosition({ x, 0.0f, z });
+                }
+                removed[client_id] = false;
             }
-            std::cout << "client " << client_id << " disconnected" << std::endl;
+            for(auto& r : removed) {
+                if(r.first == client_id) continue;
+                if(r.second) {
+                    players[r.first]->Release();
+                    players.erase(r.first);
+                }
+            }
             break;
         }
         default:
