@@ -37,6 +37,9 @@ struct Packet {
     char size;
     char type;
     char data[1024];
+
+    Packet();
+    Packet(char size, char type);
 };
 #pragma pack(pop)
 

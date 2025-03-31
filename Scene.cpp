@@ -428,7 +428,7 @@ bool GameScene::OnProcessingKeyboardMessage(HWND hWnd, UINT nMessageID, WPARAM w
                     break;
             }
             break;
-        case WM_KEYDOWN:
+        case WM_KEYDOWN: {
             Packet packet;
             packet.size = 3;
             packet.type = 1;    // move
@@ -450,6 +450,7 @@ bool GameScene::OnProcessingKeyboardMessage(HWND hWnd, UINT nMessageID, WPARAM w
                     tcp_connection.send(&packet);
                     return true;
             }
+        }
         default:
             break;
     }
@@ -526,7 +527,7 @@ void GameScene::recvFromServer() {
         }
     }
 
-    if(packet.size > 0) {
+    if(packet.size > 0 && packet.type != -1) {
         processPacket(packet);
     }
 }
@@ -573,7 +574,7 @@ void GameScene::processPacket(Packet& packet) {
             }
             for(auto& r : removed) {
                 if(r.first == client_id) continue;
-                if(r.second) {
+                if(true == r.second) {
                     players[r.first]->Release();
                     players.erase(r.first);
                 }
