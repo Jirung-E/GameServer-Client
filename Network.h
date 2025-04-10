@@ -51,10 +51,10 @@ public:
     void close();
     void setNoBlock(bool no_block);
 
-    // 일단 성공여부는 리턴하지 않음(무조건 성공이라고 가정)
-    void send(Packet* packet);
-    // 일단 성공여부는 리턴하지 않음(무조건 성공이라고 가정)
-    int receive(Packet* packet/*out*/);
+    // WSASend의 결과를 리턴
+    int send(Packet* packet);
+    // WSARecv의 결과를 리턴
+    int receive(char* buf/*out*/, ULONG size, DWORD* size_recv/*out*/);
 
 public:
     static void printErrorMessage(int s_err);

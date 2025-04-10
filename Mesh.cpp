@@ -50,7 +50,7 @@ CMeshLoadInfo CMeshLoadInfo::CubeInfo(float fWidth, float fHeight, float fDepth)
 	};
 	reverse(indices.begin(), indices.end());
 
-	pMeshInfo.m_nVertices = indices.size();
+	pMeshInfo.m_nVertices = static_cast<int>(indices.size());
 	pMeshInfo.m_pxmf3Positions = new XMFLOAT3[pMeshInfo.m_nVertices];
 
 	pMeshInfo.m_nIndices = pMeshInfo.m_nVertices;
@@ -129,7 +129,7 @@ CMeshFromFile::CMeshFromFile(
 		float most_near_z = FLT_MAX;
 		float most_far_z = -FLT_MAX;
 
-		for(int i=0; i<m_nVertices; ++i) {
+		for(UINT i=0; i<m_nVertices; ++i) {
 			const XMFLOAT3& position = pMeshInfo->m_pxmf3Positions[i];
 			if(position.x < most_left_x) most_left_x = position.x;
 			if(position.x > most_right_x) most_right_x = position.x;

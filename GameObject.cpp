@@ -11,7 +11,8 @@ using namespace std;
 
 CGameObject::CGameObject():
     m_xmf4x4Transform { Matrix4x4::Identity() },
-    m_xmf4x4World { Matrix4x4::Identity() }
+    m_xmf4x4World { Matrix4x4::Identity() },
+    m_pstrFrameName { }
 {
 
 }
@@ -372,14 +373,17 @@ static float ReadFloatFromFile(FILE* pInFile) {
     return(fValue);
 }
 
-static BYTE ReadStringFromFile(FILE* pInFile, char* pstrToken) {
+static BYTE ReadStringFromFile(FILE* pInFile, char* pstrToken, size_t bufferSize) {
     BYTE nStrLength = 0;
     UINT nReads = 0;
     nReads = (UINT)::fread(&nStrLength, sizeof(BYTE), 1, pInFile);
+    if(nStrLength >= bufferSize) {
+        nStrLength = static_cast<BYTE>(bufferSize - 1);
+    }
     nReads = (UINT)::fread(pstrToken, sizeof(char), nStrLength, pInFile);
     pstrToken[nStrLength] = '\0';
 
-    return(nStrLength);
+    return nStrLength;
 }
 
 
@@ -400,7 +404,7 @@ MATERIALSLOADINFO* CGameObject::LoadMaterialsInfoFromFile(ID3D12Device* pd3dDevi
     pMaterialsInfo->m_pMaterials = new MATERIALLOADINFO[pMaterialsInfo->m_nMaterials];
 
     for(; ; ) {
-        ::ReadStringFromFile(pInFile, pstrToken);
+        ::ReadStringFromFile(pInFile, pstrToken, sizeof(pstrToken));
 
         if(!strcmp(pstrToken, "<Material>:")) {
             nMaterial = ::ReadIntegerFromFile(pInFile);
@@ -446,10 +450,10 @@ CMeshLoadInfo* CGameObject::LoadMeshInfoFromFile(FILE* pInFile, float size) {
     CMeshLoadInfo* pMeshInfo = new CMeshLoadInfo;
 
     pMeshInfo->m_nVertices = ::ReadIntegerFromFile(pInFile);
-    ::ReadStringFromFile(pInFile, pMeshInfo->m_pstrMeshName);
+    ::ReadStringFromFile(pInFile, pMeshInfo->m_pstrMeshName, sizeof(pstrToken));
 
     for(; ; ) {
-        ::ReadStringFromFile(pInFile, pstrToken);
+        ::ReadStringFromFile(pInFile, pstrToken, sizeof(pstrToken));
 
         if(!strcmp(pstrToken, "<Bounds>:")) {
             nReads = (UINT)::fread(&(pMeshInfo->m_xmf3AABBCenter), sizeof(XMFLOAT3), 1, pInFile);
@@ -498,7 +502,7 @@ CMeshLoadInfo* CGameObject::LoadMeshInfoFromFile(FILE* pInFile, float size) {
                 pMeshInfo->m_ppnSubSetIndices = new UINT*[pMeshInfo->m_nSubMeshes];
                 for(int i = 0; i < pMeshInfo->m_nSubMeshes; i++) {
                     pMeshInfo->m_ppnSubSetIndices[i] = NULL;
-                    ::ReadStringFromFile(pInFile, pstrToken);
+                    ::ReadStringFromFile(pInFile, pstrToken, sizeof(pstrToken));
                     if(!strcmp(pstrToken, "<SubMesh>:")) {
                         int nIndex = ::ReadIntegerFromFile(pInFile);
                         pMeshInfo->m_pnSubSetIndices[i] = ::ReadIntegerFromFile(pInFile);
@@ -531,15 +535,13 @@ CGameObject* CGameObject::LoadFrameHierarchyFromFile(
 
     int nFrame = 0;
 
-    CGameObject* pGameObject = NULL;
+    CGameObject* pGameObject = new CGameObject { };
 
     for(; ; ) {
-        ::ReadStringFromFile(pInFile, pstrToken);
+        ::ReadStringFromFile(pInFile, pstrToken, sizeof(pstrToken));
         if(!strcmp(pstrToken, "<Frame>:")) {
-            pGameObject = new CGameObject();
-
             nFrame = ::ReadIntegerFromFile(pInFile);
-            ::ReadStringFromFile(pInFile, pGameObject->m_pstrFrameName);
+            ::ReadStringFromFile(pInFile, pGameObject->m_pstrFrameName, sizeof(pstrToken));
         }
         else if(!strcmp(pstrToken, "<Transform>:")) {           // 여기는 읽은 값을 안쓰는듯?
             XMFLOAT3 xmf3Position, xmf3Rotation, xmf3Scale;
@@ -618,13 +620,17 @@ CGameObject* CGameObject::LoadGeometryFromFile(
 ) {
     FILE* pInFile = NULL;
     ::fopen_s(&pInFile, pstrFileName, "rb");
+    if(!pInFile) {
+        ::MessageBox(NULL, _T("Failed to open file"), _T("Error"), MB_OK);
+        return nullptr;
+    }
     ::rewind(pInFile);
 
-    CGameObject* pGameObject = NULL;
+    CGameObject* pGameObject = nullptr;
     char pstrToken[64] = { '\0' };
 
     for(; ; ) {
-        ::ReadStringFromFile(pInFile, pstrToken);
+        ::ReadStringFromFile(pInFile, pstrToken, sizeof(pstrToken));
 
         if(!strcmp(pstrToken, "<Hierarchy>:")) {
             pGameObject = CGameObject::LoadFrameHierarchyFromFile(pd3dDevice, pd3dCommandList, pd3dGraphicsRootSignature, pInFile, size);
@@ -701,7 +707,7 @@ CGameObject* CGameObject::LoadFromObjFile(
 
     // 프리미티브별로 노말을 하나씩 가져야 하는데, 이게 지금 안됨.
     // 그래서 프리미티브별로 정점을 가지도록 정점을 복사해야함
-    pMeshInfo->m_nVertices = indices.size();
+    pMeshInfo->m_nVertices = static_cast<int>(indices.size());
     pMeshInfo->m_pxmf3Positions = new XMFLOAT3[pMeshInfo->m_nVertices];
 
     pMeshInfo->m_nIndices = pMeshInfo->m_nVertices;

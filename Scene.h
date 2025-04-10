@@ -103,9 +103,10 @@ private:
     Console console;
     WsaGuard wsa_guard;
     TcpConnection tcp_connection;
-    int client_id;
+    long long client_id;
     std::string name;
-    std::unordered_map<int, CPlayer*> players;
+    PacketParser packet_parser;
+    std::unordered_map<long long, CPlayer*> players;
 
 public:
 	GameScene(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList);
@@ -127,12 +128,14 @@ public:
     virtual void Render();
 
 protected:
-    CPlayer* addPlayer(int id, const float x, const float z);
+    CPlayer* addPlayer(long long id, const float x, const float z);
     void movePlayer(float fTimeElapsed);
 
     void updateCamera();
 
     void connectToServer();
+    void login();
+    void move(char direction);
     void recvFromServer();
     void processPacket(Packet& packet);
 };

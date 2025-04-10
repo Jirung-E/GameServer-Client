@@ -84,7 +84,7 @@ CMesh* CPlayer::LoadMeshFromFile(
 
     // 프리미티브별로 노말을 하나씩 가져야 하는데, 이게 지금 안됨.
     // 그래서 프리미티브별로 정점을 가지도록 정점을 복사해야함
-    pMeshInfo->m_nVertices = indices.size();
+    pMeshInfo->m_nVertices = static_cast<int>(indices.size());
     pMeshInfo->m_pxmf3Positions = new XMFLOAT3[pMeshInfo->m_nVertices];
 
     pMeshInfo->m_nIndices = pMeshInfo->m_nVertices;

@@ -85,7 +85,7 @@ namespace Random {
     }
 
     inline float randint(int fMin, int fMax) {
-        return(fMin + (rand() % (fMax - fMin + 1)));
+        return static_cast<float>(fMin + (rand() % (fMax - fMin + 1)));
     }
 
     inline XMVECTOR RandomUnitVectorOnSphere() {

@@ -11,7 +11,8 @@ Scene::Scene(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandLis
     scene_height { FRAME_BUFFER_HEIGHT },
     camera { nullptr },
     m_pd3dDevice { pd3dDevice },
-    m_pd3dCommandList { pd3dCommandList }
+    m_pd3dCommandList { pd3dCommandList },
+    m_xmf4GlobalAmbient { 0.0f, 0.0f, 0.0f, 1.0f }
 {
 
 }
@@ -250,19 +251,15 @@ GameScene::GameScene(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCo
     wsa_guard { },
     tcp_connection { },
     client_id { },
-    name { }
+    name { },
+    packet_parser { }
 {
     bg_color = { 0.0f, 0.125f, 0.3f, 1.0f };
     near_plane_distance = 0.1f;
     far_plane_distance = 500.0f;
 
     connectToServer();
-
-    std::cout << "Enter your name(max " << static_cast<int>(MAX_ID_LENGTH) << " character): ";
-    std::string name;
-    std::cin >> name;
-    cs_packet_login lp { name };
-    tcp_connection.send(reinterpret_cast<Packet*>(&lp));
+    login();
 
     console.close();
 }
@@ -358,7 +355,7 @@ void GameScene::BuildObjects() {
             for(int k=0; k<8; ++k) {
                 CubeObject* cube = new CubeObject { };
                 cube->SetMesh(cube_mesh);
-                cube->SetPosition(k, -0.5f, i);
+                cube->SetPosition(static_cast<float>(k), -0.5f, static_cast<float>(i));
                 if((i + k) % 2 == 0) {
                     cube->SetMaterial(0, black_material);
                 }
@@ -445,23 +442,19 @@ bool GameScene::OnProcessingKeyboardMessage(HWND hWnd, UINT nMessageID, WPARAM w
         case WM_KEYDOWN: {
             switch(wParam) {
                 case VK_RIGHT: {
-                    cs_packet_move mp { MOVE_RIGHT };
-                    tcp_connection.send(reinterpret_cast<Packet*>(&mp));
+                    move(MOVE_RIGHT);
                     return true;
                 }
                 case VK_LEFT: {
-                    cs_packet_move mp { MOVE_LEFT };
-                    tcp_connection.send(reinterpret_cast<Packet*>(&mp));
+                    move(MOVE_LEFT);
                     return true;
                 }
                 case VK_UP: {
-                    cs_packet_move mp { MOVE_UP };
-                    tcp_connection.send(reinterpret_cast<Packet*>(&mp));
+                    move(MOVE_UP);
                     return true;
                 }
                 case VK_DOWN: {
-                    cs_packet_move mp { MOVE_DOWN };
-                    tcp_connection.send(reinterpret_cast<Packet*>(&mp));
+                    move(MOVE_DOWN);
                     return true;
                 }
             }
@@ -485,7 +478,7 @@ void GameScene::Render() {
 }
 
 
-CPlayer* GameScene::addPlayer(int id, const float x, const float z) {
+CPlayer* GameScene::addPlayer(long long id, const float x, const float z) {
     CPlayer* player = new CPlayer { };
     player->SetMesh(player_mesh);
     player->SetPosition({ x, 0.0f, z });
@@ -529,11 +522,23 @@ void GameScene::connectToServer() {
     tcp_connection.setNoBlock(true);
 }
 
-void GameScene::recvFromServer() {
-    Packet packet;
-    packet.type = -1;
+void GameScene::login() {
+    std::cout << "Enter your name(max " << static_cast<int>(MAX_ID_LENGTH) << " character): ";
+    std::string name;
+    std::cin >> name;
+    cs_packet_login lp { name };
+    tcp_connection.send(reinterpret_cast<Packet*>(&lp));
+}
 
-    auto res = tcp_connection.receive(&packet);
+void GameScene::move(char direction) {
+    cs_packet_move mp { direction };
+    tcp_connection.send(reinterpret_cast<Packet*>(&mp));
+}
+
+void GameScene::recvFromServer() {
+    char buf[1024] = { 0 };
+    DWORD size_recv = 0;
+    auto res = tcp_connection.receive(buf, sizeof(buf), &size_recv);
     if(res == SOCKET_ERROR) {
         auto err_no = WSAGetLastError();
         if(err_no != WSAEWOULDBLOCK) {
@@ -542,7 +547,10 @@ void GameScene::recvFromServer() {
         }
     }
 
-    if(packet.size > 0 && packet.type != -1) {
+    packet_parser.push(buf, size_recv);
+
+    while(packet_parser.canPop()) {
+        Packet packet = packet_parser.pop();
         processPacket(packet);
     }
 }
