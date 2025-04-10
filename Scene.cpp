@@ -557,7 +557,7 @@ void GameScene::recvFromServer() {
 
 void GameScene::processPacket(Packet& packet) {
     switch(packet.type) {
-        case S2C_P_AVATAR_INFO: {   // init
+        case S2C_P_AVATAR_INFO: {
             sc_packet_avatar_info* info_packet = reinterpret_cast<sc_packet_avatar_info*>(&packet);
             client_id = info_packet->id;
             float x = static_cast<float>(info_packet->x);
@@ -569,23 +569,20 @@ void GameScene::processPacket(Packet& packet) {
         case S2C_P_ENTER: {
             sc_packet_enter* enter_packet = reinterpret_cast<sc_packet_enter*>(&packet);
             int client_id = static_cast<int>(enter_packet->id);
-            float x = static_cast<float>(enter_packet->x);
-            float z = static_cast<float>(enter_packet->y);
-            auto player = addPlayer(client_id, x, z);
-            player->SetMaterial(0, gray_material);
-        }
-        case S2C_P_MOVE: {   // update
-            sc_packet_move* move_packet = reinterpret_cast<sc_packet_move*>(&packet);
-            int client_id = static_cast<int>(move_packet->id);
-            //std::cout << "client_id: " << client_id << std::endl;
-            float x = static_cast<float>(move_packet->x);
-            float z = static_cast<float>(move_packet->y);
             if(players.find(client_id) == players.end()) {
+                float x = static_cast<float>(enter_packet->x);
+                float z = static_cast<float>(enter_packet->y);
                 auto player = addPlayer(client_id, x, z);
                 player->SetMaterial(0, gray_material);
-                //std::cout << "new player" << std::endl;
             }
-            else {
+            break;
+        }
+        case S2C_P_MOVE: {
+            sc_packet_move* move_packet = reinterpret_cast<sc_packet_move*>(&packet);
+            int client_id = static_cast<int>(move_packet->id);
+            if(players.find(client_id) != players.end()) {
+                float x = static_cast<float>(move_packet->x);
+                float z = static_cast<float>(move_packet->y);
                 auto player = players[client_id];
                 player->SetPosition({ x, 0.0f, z });
             }
@@ -593,6 +590,13 @@ void GameScene::processPacket(Packet& packet) {
         }
         case S2C_P_LEAVE: {
             sc_packet_leave* leave_packet = reinterpret_cast<sc_packet_leave*>(&packet);
+            int client_id = static_cast<int>(leave_packet->id);
+            auto it = players.find(client_id);
+            if(it != players.end()) {
+                CPlayer* player = it->second;
+                players.erase(it);
+                player->Release();
+            }
             break;
         }
         default:
