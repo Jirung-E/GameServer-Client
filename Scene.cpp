@@ -1,6 +1,7 @@
 #include "Scene.h"
 
 #include "Shader.h"
+#include "../GameServer-Server/game_header.h"
 
 #include <iostream>
 
@@ -244,13 +245,26 @@ void Scene::adaptCamera() {
 
 
 GameScene::GameScene(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList): 
-    Scene { pd3dDevice, pd3dCommandList }
+    Scene { pd3dDevice, pd3dCommandList },
+    console { },
+    wsa_guard { },
+    tcp_connection { },
+    client_id { },
+    name { }
 {
     bg_color = { 0.0f, 0.125f, 0.3f, 1.0f };
     near_plane_distance = 0.1f;
     far_plane_distance = 500.0f;
 
     connectToServer();
+
+    std::cout << "Enter your name(max " << static_cast<int>(MAX_ID_LENGTH) << " character): ";
+    std::string name;
+    std::cin >> name;
+    cs_packet_login lp { name };
+    tcp_connection.send(reinterpret_cast<Packet*>(&lp));
+
+    console.close();
 }
 
 GameScene::~GameScene() {
@@ -429,26 +443,27 @@ bool GameScene::OnProcessingKeyboardMessage(HWND hWnd, UINT nMessageID, WPARAM w
             }
             break;
         case WM_KEYDOWN: {
-            Packet packet;
-            packet.size = 3;
-            packet.type = 1;    // move
             switch(wParam) {
-                case VK_RIGHT:
-                    packet.data[0] = 0;
-                    tcp_connection.send(&packet);
+                case VK_RIGHT: {
+                    cs_packet_move mp { MOVE_RIGHT };
+                    tcp_connection.send(reinterpret_cast<Packet*>(&mp));
                     return true;
-                case VK_LEFT:
-                    packet.data[0] = 1;
-                    tcp_connection.send(&packet);
+                }
+                case VK_LEFT: {
+                    cs_packet_move mp { MOVE_LEFT };
+                    tcp_connection.send(reinterpret_cast<Packet*>(&mp));
                     return true;
-                case VK_UP:
-                    packet.data[0] = 2;
-                    tcp_connection.send(&packet);
+                }
+                case VK_UP: {
+                    cs_packet_move mp { MOVE_UP };
+                    tcp_connection.send(reinterpret_cast<Packet*>(&mp));
                     return true;
-                case VK_DOWN:
-                    packet.data[0] = 3;
-                    tcp_connection.send(&packet);
+                }
+                case VK_DOWN: {
+                    cs_packet_move mp { MOVE_DOWN };
+                    tcp_connection.send(reinterpret_cast<Packet*>(&mp));
                     return true;
+                }
             }
         }
         default:
@@ -512,8 +527,6 @@ void GameScene::connectToServer() {
 
     tcp_connection.connect(addr);
     tcp_connection.setNoBlock(true);
-
-    console.close();
 }
 
 void GameScene::recvFromServer() {
@@ -536,51 +549,42 @@ void GameScene::recvFromServer() {
 
 void GameScene::processPacket(Packet& packet) {
     switch(packet.type) {
-        case 0: {   // init
-            client_id = packet.data[0];
-            float x = static_cast<float>(packet.data[1]);
-            float z = static_cast<float>(packet.data[2]);
+        case S2C_P_AVATAR_INFO: {   // init
+            sc_packet_avatar_info* info_packet = reinterpret_cast<sc_packet_avatar_info*>(&packet);
+            client_id = info_packet->id;
+            float x = static_cast<float>(info_packet->x);
+            float z = static_cast<float>(info_packet->y);
             m_pPlayer = addPlayer(client_id, x, z);
             m_pPlayer->SetMaterial(0, white_material);
-            int size = packet.size - 2;
-            for(int i=3; i<size; i+=3) {
-                int client_id = static_cast<int>(packet.data[i+0]);
-                float x = static_cast<float>(packet.data[i+1]);
-                float z = static_cast<float>(packet.data[i+2]);
+            break;
+        }
+        case S2C_P_ENTER: {
+            sc_packet_enter* enter_packet = reinterpret_cast<sc_packet_enter*>(&packet);
+            int client_id = static_cast<int>(enter_packet->id);
+            float x = static_cast<float>(enter_packet->x);
+            float z = static_cast<float>(enter_packet->y);
+            auto player = addPlayer(client_id, x, z);
+            player->SetMaterial(0, gray_material);
+        }
+        case S2C_P_MOVE: {   // update
+            sc_packet_move* move_packet = reinterpret_cast<sc_packet_move*>(&packet);
+            int client_id = static_cast<int>(move_packet->id);
+            //std::cout << "client_id: " << client_id << std::endl;
+            float x = static_cast<float>(move_packet->x);
+            float z = static_cast<float>(move_packet->y);
+            if(players.find(client_id) == players.end()) {
                 auto player = addPlayer(client_id, x, z);
                 player->SetMaterial(0, gray_material);
+                //std::cout << "new player" << std::endl;
+            }
+            else {
+                auto player = players[client_id];
+                player->SetPosition({ x, 0.0f, z });
             }
             break;
         }
-        case 1: {   // update
-            int size = packet.size - 2;
-            std::unordered_map<int, bool> removed;
-            for(auto& player : players) {
-                removed[player.first] = true;
-            }
-            for(int i=0; i<size; i+=3) {
-                int client_id = static_cast<int>(packet.data[i+0]);
-                //std::cout << "client_id: " << client_id << std::endl;
-                float x = static_cast<float>(packet.data[i+1]);
-                float z = static_cast<float>(packet.data[i+2]);
-                if(players.find(client_id) == players.end()) {
-                    auto player = addPlayer(client_id, x, z);
-                    player->SetMaterial(0, gray_material);
-                    //std::cout << "new player" << std::endl;
-                }
-                else {
-                    auto player = players[client_id];
-                    player->SetPosition({ x, 0.0f, z });
-                }
-                removed[client_id] = false;
-            }
-            for(auto& r : removed) {
-                if(r.first == client_id) continue;
-                if(true == r.second) {
-                    players[r.first]->Release();
-                    players.erase(r.first);
-                }
-            }
+        case S2C_P_LEAVE: {
+            sc_packet_leave* leave_packet = reinterpret_cast<sc_packet_leave*>(&packet);
             break;
         }
         default:

@@ -89,19 +89,3 @@ void TcpConnection::printErrorMessage(int s_err) {
     while(true); // µð¹ö±ë ¿ë
     LocalFree(lpMsgBuf);
 }
-
-Packet::Packet():
-    size { 0 },
-    type { 0 },
-    data { }
-{
-
-}
-
-Packet::Packet(char size, char type):
-    size { size },
-    type { type },
-    data { }
-{
-
-}

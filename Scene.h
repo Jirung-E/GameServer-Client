@@ -103,7 +103,8 @@ private:
     Console console;
     WsaGuard wsa_guard;
     TcpConnection tcp_connection;
-    int client_id = 0;
+    int client_id;
+    std::string name;
     std::unordered_map<int, CPlayer*> players;
 
 public:

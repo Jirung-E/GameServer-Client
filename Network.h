@@ -4,6 +4,8 @@
 
 #include <iostream>
 
+#include "../GameServer-Server/game_header.h"
+
 #pragma comment(lib, "WS2_32.lib")
 
 
@@ -30,18 +32,6 @@ public:
         WSACleanup();
     }
 };
-
-
-#pragma pack(push, 1)
-struct Packet {
-    char size;
-    char type;
-    char data[1024];
-
-    Packet();
-    Packet(char size, char type);
-};
-#pragma pack(pop)
 
 
 // 소멸자에서 소켓을 닫음(RAII)  
