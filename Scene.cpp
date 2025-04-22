@@ -513,9 +513,11 @@ void GameScene::updateCamera() {
 
 
 void GameScene::connectToServer() {
-    std::cout << "Enter Address(ip): ";
-    std::string addr;
-    std::cin >> addr;
+    //std::cout << "Enter Address(ip): ";
+    //std::string addr;
+    //std::cin >> addr;
+    std::string addr = "127.0.0.1";
+
     std::cout << "connecting to " << addr << ":" << 3000 << std::endl;
 
     tcp_connection.connect(addr);
@@ -523,9 +525,11 @@ void GameScene::connectToServer() {
 }
 
 void GameScene::login() {
-    std::cout << "Enter your name(max " << static_cast<int>(MAX_ID_LENGTH) << " character): ";
-    std::string name;
-    std::cin >> name;
+    //std::cout << "Enter your name(max " << static_cast<int>(MAX_ID_LENGTH) << " character): ";
+    //std::string name;
+    //std::cin >> name;
+    std::string name = "player0";
+
     cs_packet_login lp { name };
     tcp_connection.send(reinterpret_cast<Packet*>(&lp));
 }
